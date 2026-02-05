@@ -4,6 +4,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { getIsAdmin } from '@/lib/isAdmin'
+import { uploadWithIncrement } from '@/lib/uploadImage'
+import { buildBookBase, buildWordBase } from '@/lib/filenames'
+import { ImageUploader } from '../components/imageUploader'
 
 type Language = 'DE' | 'PT'
 
@@ -100,7 +103,7 @@ export default function AdminCreatePage() {
 
       const isAdmin = await getIsAdmin()
       if (!isAdmin) {
-        router.replace('/language')
+        router.replace('/languages')
         return
       }
 
@@ -271,7 +274,6 @@ export default function AdminCreatePage() {
       topic_id: '',
       picture: '',
       tasks: '[]',
-      // book_id/lesson/language оставляем, чтобы быстро добавлять серию слов
     }))
   }
 
@@ -372,7 +374,10 @@ export default function AdminCreatePage() {
                         <label className="text-sm text-white/80">Language</label>
                         <select
                           value={bookForm.language}
-                          onChange={(e) => setBF('language', e.target.value)}
+                          onChange={(e) => {
+                            setBF('language', e.target.value)
+                            setBF('picture', '')
+                          }}
                           className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
                         >
                           <option value="DE">DE</option>
@@ -389,20 +394,31 @@ export default function AdminCreatePage() {
                           required
                         />
                       </div>
-
-                      <div className="grid gap-2 sm:col-span-6">
-                        <label className="text-sm text-white/80">Picture</label>
-                        <input
-                          value={bookForm.picture}
-                          onChange={(e) => setBF('picture', e.target.value)}
-                          className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
-                          required
-                        />
-                      </div>
                     </div>
+
+                    <div className="grid gap-2 mt-6">
+                        <label className="text-sm text-white/80">Picture</label>
+                          <ImageUploader
+                            value={bookForm.picture}
+                            onChange={(url) => setBF('picture', url)}
+                            upload={async (file) => {
+                              const baseName = buildBookBase(bookForm.name)
+                              return await uploadWithIncrement(file, {
+                                entity: 'books',
+                                language: bookForm.language,
+                                baseName,
+                              })
+                            }}
+                            canUpload={() => {
+                              if (!bookForm.name.trim()) return { ok: false, message: 'Enter book name first.' }
+                              return { ok: true }
+                            }}
+                          />
+                      </div>
 
                     <button
                       type="submit"
+                      disabled={!bookForm.picture.trim()}
                       className="mt-10 w-full rounded-2xl bg-white px-4 py-3.5 text-base font-semibold text-slate-950 shadow-lg shadow-white/10 transition hover:-translate-y-[1px] hover:shadow-xl active:translate-y-0"
                     >
                       Save book
@@ -420,6 +436,7 @@ export default function AdminCreatePage() {
                           setWF('language', e.target.value)
                           setWF('book_id', '')
                           setWF('topic_id', '')
+                          setWF('picture', '')
                         }}
                         className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
                       >
@@ -574,29 +591,65 @@ export default function AdminCreatePage() {
                     </div>
                   </div>
 
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <div className="grid gap-2">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-6">
+                      <div className="grid gap-2 sm:col-span-2">
                         <label className="text-sm text-white/80">Picture</label>
-                        <input
+                        <ImageUploader
                           value={wordForm.picture}
-                          onChange={(e) => setWF('picture', e.target.value)}
-                          className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
-                          required
+                          onChange={(url) => setWF('picture', url)}
+                          upload={async (file) => {
+                            const topicName =
+                              topics.find((t) => String(t.id) === String(wordForm.topic_id))?.name ?? '-'
+
+                            const baseName = buildWordBase({
+                              lesson: wordForm.lesson,
+                              topicName,
+                              wordSingular: wordForm.word_singular,
+                            })
+
+                            return await uploadWithIncrement(file, {
+                              entity: 'words',
+                              language: wordForm.language,
+                              baseName,
+                            })
+                          }}
+                          canUpload={() => {
+                            const lessonNum = Number(wordForm.lesson)
+                            if (!Number.isFinite(lessonNum) || lessonNum < 1) {
+                              return { ok: false, message: 'Enter correct lesson number.' }
+                            }
+                            if (!wordForm.topic_id.trim()) {
+                              return { ok: false, message: 'Select a topic first.' }
+                            }
+                            if (!wordForm.word_singular.trim()) {
+                              return { ok: false, message: 'Enter word (singular) first.' }
+                            }
+                            return { ok: true }
+                          }}
                         />
                       </div>
 
-                      <div className="grid gap-2">
+                      <div className="grid gap-2 sm:col-span-4">
                         <label className="text-sm text-white/80">Tasks (optional)</label>
-                        <input
+
+                        <textarea
                           value={wordForm.tasks}
                           onChange={(e) => setWF('tasks', e.target.value)}
-                          className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
+                          className={[
+                            "h-65 w-full resize-none",
+                            "rounded-2xl border border-white/15 bg-white/10 px-4 py-3",
+                            "text-white outline-none",
+                            "focus:border-white/25 focus:ring-2 focus:ring-white/10",
+                            "font-mono text-sm leading-5",
+                          ].join(" ")}
+                          placeholder="[]"
                         />
                       </div>
                     </div>
 
                     <button
                       type="submit"
+                      disabled={!wordForm.picture.trim()}
                       className="mt-10 w-full rounded-2xl bg-white px-4 py-3.5 text-base font-semibold text-slate-950 shadow-lg shadow-white/10 transition hover:-translate-y-[1px] hover:shadow-xl active:translate-y-0"
                     >
                       Save word
