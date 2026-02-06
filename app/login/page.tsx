@@ -30,7 +30,10 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${siteUrl}/auth/callback`,
+        emailRedirectTo:
+          process.env.NODE_ENV === 'development'
+            ? 'http://localhost:3000'
+            : 'https://lingui-academy.vercel.app',
       },
     });
 
