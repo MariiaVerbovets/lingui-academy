@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { getIsAdmin } from '@/lib/isAdmin'
 import { uploadWithIncrement } from '@/lib/uploadImage'
@@ -27,6 +28,21 @@ type Mode = 'word' | 'book' | 'topic'
 
 export default function AdminCreatePage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const from = searchParams.get('from')
+
+  const goBack = () => {
+    if (from) {
+      router.push(from)
+      return
+    }
+
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back()
+    } else {
+      router.push('/languages')
+    }
+  }
 
   const [loading, setLoading] = useState(true)
   const [mode, setMode] = useState<Mode>('word')
@@ -40,6 +56,7 @@ export default function AdminCreatePage() {
     language: 'DE' as Language,
     name: '',
   })
+
   const setTF = (k: string, v: string) => setTopicForm((p) => ({ ...p, [k]: v }))
 
   const [bookForm, setBookForm] = useState({
@@ -63,6 +80,23 @@ export default function AdminCreatePage() {
     picture: '',
     tasks: '[]',
   })
+
+  const [bookResetKey, setBookResetKey] = useState(0)
+  const [wordResetKey, setWordResetKey] = useState(0)
+
+  useEffect(() => {
+    if (!ok) return
+
+    const t = setTimeout(() => setOk(null), 5000)
+    return () => clearTimeout(t)
+  }, [ok])
+
+  useEffect(() => {
+    if (!error) return
+
+    const t = setTimeout(() => setError(null), 10000)
+    return () => clearTimeout(t)
+  }, [error])
 
   const loadBooks = async () => {
     const { data, error } = await supabase
@@ -169,6 +203,7 @@ export default function AdminCreatePage() {
 
     setOk('Book added ✅')
     setBookForm((p) => ({ ...p, name: '', picture: '' }))
+    setBookResetKey((k) => k + 1)
     await refetchAll()
   }
 
@@ -271,10 +306,10 @@ export default function AdminCreatePage() {
       translation_ru: '',
       translation_ukr: '',
       translation_en: '',
-      topic_id: '',
       picture: '',
       tasks: '[]',
     }))
+    setWordResetKey((k) => k + 1)
   }
 
   if (loading) {
@@ -287,6 +322,21 @@ export default function AdminCreatePage() {
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 px-4">
+      {/* Back button */}
+      <button
+        type="button"
+        onClick={goBack}
+        className={[
+          'absolute left-6 top-6 z-30',
+          'inline-flex items-center gap-2',
+          'text-sm text-white/70 hover:text-white',
+          'transition',
+        ].join(' ')}
+      >
+        <span className="text-base">←</span>
+        Back
+      </button>
+
       {/* Background blobs */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -top-28 left-1/2 h-[460px] w-[460px] -translate-x-1/2 rounded-full bg-fuchsia-500/20 blur-3xl" />
@@ -355,12 +405,12 @@ export default function AdminCreatePage() {
 
               {/* Messages */}
               {error && (
-                <div className="mt-5 rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-200">
+                <div className="mt-5 inline-flex rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-200">
                   {error}
                 </div>
               )}
               {ok && (
-                <div className="mt-5 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm text-emerald-200">
+                <div className="mt-5 inline-flex rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm text-emerald-200">
                   {ok}
                 </div>
               )}
@@ -400,7 +450,9 @@ export default function AdminCreatePage() {
                         <label className="text-sm text-white/80">Picture</label>
                           <ImageUploader
                             value={bookForm.picture}
+                            resetKey={bookResetKey}
                             onChange={(url) => setBF('picture', url)}
+                            onError={(msg) => setError(msg)}
                             upload={async (file) => {
                               const baseName = buildBookBase(bookForm.name)
                               return await uploadWithIncrement(file, {
@@ -596,7 +648,9 @@ export default function AdminCreatePage() {
                         <label className="text-sm text-white/80">Picture</label>
                         <ImageUploader
                           value={wordForm.picture}
+                          resetKey={wordResetKey}
                           onChange={(url) => setWF('picture', url)}
+                          onError={(msg) => setError(msg)}
                           upload={async (file) => {
                             const topicName =
                               topics.find((t) => String(t.id) === String(wordForm.topic_id))?.name ?? '-'

@@ -72,7 +72,7 @@ export default function GermanPage() {
       {isAdmin && (
         <div className="absolute right-6 top-6 z-20">
           <button
-            onClick={() => router.push('/admin')}
+            onClick={() => router.push('/admin?from=' + encodeURIComponent('/languages/german'))}
             className={[
               "group relative h-10 w-10 rounded-xl border border-white/15 bg-white/5",
               "transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/20",
