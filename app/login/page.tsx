@@ -15,7 +15,7 @@ export default function LoginPage() {
   useEffect(() => {
     (async () => {
       const { data } = await supabase.auth.getSession();
-      if (!data.session) router.push("/languages");
+      if (data.session) router.push("/languages");
     })();
   }, [router]);
 
