@@ -11,6 +11,7 @@ export default function LanguagePage() {
   const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
+    setLoading(true)
     const run = async () => {
       const { data } = await supabase.auth.getSession()
       if (!data.session) {
@@ -19,7 +20,7 @@ export default function LanguagePage() {
       }
       try {
         const admin = await getIsAdmin()
-        setIsAdmin(!!admin)
+        setIsAdmin(admin)
       } catch (e) {
         console.warn('getIsAdmin failed', e)
         setIsAdmin(false)
@@ -30,7 +31,7 @@ export default function LanguagePage() {
     run()
   }, [router])
 
-  const go = (path: '/german' | '/portuguese') => {
+  const go = (path: '/languages/german' | '/languages/portuguese') => {
     router.push(path)
   }
 
@@ -110,7 +111,7 @@ export default function LanguagePage() {
               {/* Cards */}
               <div className="mt-7 grid gap-4 sm:grid-cols-2">
                 <button
-                  onClick={() => go('/german')}
+                  onClick={() => go('/languages/german')}
                   className="group rounded-3xl border border-white/10 bg-white/5 p-5 text-left shadow-[0_10px_30px_-15px_rgba(0,0,0,0.7)] transition hover:-translate-y-[1px] hover:bg-white/10"
                 >
                   <div className="flex items-center justify-between">
@@ -128,7 +129,7 @@ export default function LanguagePage() {
                 </button>
 
                 <button
-                  onClick={() => go('/portuguese')}
+                  onClick={() => go('/languages/portuguese')}
                   className="group rounded-3xl border border-white/10 bg-white/5 p-5 text-left shadow-[0_10px_30px_-15px_rgba(0,0,0,0.7)] transition hover:-translate-y-[1px] hover:bg-white/10"
                 >
                   <div className="flex items-center justify-between">
