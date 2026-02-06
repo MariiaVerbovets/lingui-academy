@@ -158,8 +158,8 @@ export default function GermanPage() {
               )}
 
               {/* Books grid - RECTANGULAR cards */}
-              <div className="mt-6 overflow-x-auto scroll-smooth">
-                <div className="flex gap-4 p-5 rounded-2xl">
+              <div className="mt-6 overflow-x-auto scroll-smooth scrollbar-hide">
+                <div className="flex gap-16 p-5 rounded-2xl">
                     {books.map((b) => (
                     <div
                         key={b.id}
