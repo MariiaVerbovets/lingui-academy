@@ -26,6 +26,12 @@ type Topic = {
 
 type Mode = 'word' | 'book' | 'topic'
 
+const MODE_ITEMS = [
+  { key: 'book' as const, label: '📚 Book' },
+  { key: 'word' as const, label: '📝 Word' },
+  { key: 'topic' as const, label: '🎨 Topic' }
+]
+
 export default function AdminCreateClient() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -327,11 +333,12 @@ export default function AdminCreateClient() {
         type="button"
         onClick={goBack}
         className={[
-          'absolute left-6 top-6 z-30',
+          'fixed left-6 z-30',
           'inline-flex items-center gap-2',
           'text-sm text-white/70 hover:text-white',
           'transition',
         ].join(' ')}
+        style={{ top: 'calc(env(safe-area-inset-top) + 1rem)' }}
       >
         <span className="text-base">←</span>
         Back
@@ -346,7 +353,7 @@ export default function AdminCreateClient() {
       </div>
 
       <div className="relative min-h-screen flex flex-col">
-        <div className="flex flex-1 items-center justify-center py-10 sm:py-16">
+        <div className="flex flex-1 items-center justify-center pt-24 pb-10 sm:pt-16 sm:py-16">
           <div className="w-full max-w-3xl">
             <div className="min-h-[40vh] rounded-3xl border border-white/15 bg-white/10 backdrop-blur-2xl py-10 px-6 sm:py-14 sm:px-10 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.7)]">
               {/* Header */}
@@ -365,42 +372,42 @@ export default function AdminCreateClient() {
               </div>
 
               {/* Mode switch (radio) */}
-              <div className="mt-6 flex flex-wrap items-center gap-6">
-                <label className="flex items-center gap-2 text-sm text-white/80 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="mode"
-                    value="book"
-                    checked={mode === 'book'}
-                    onChange={() => setMode('book')}
-                    className="accent-white shrink-0"
-                  />
-                  Book
-                </label>
-
-                <label className="flex items-center gap-2 text-sm text-white/80 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="mode"
-                    value="word"
-                    checked={mode === 'word'}
-                    onChange={() => setMode('word')}
-                    className="accent-white shrink-0"
-                  />
-                  Word
-                </label>
-
-                <label className="flex items-center gap-2 text-sm text-white/80 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="mode"
-                    value="topic"
-                    checked={mode === 'topic'}
-                    onChange={() => setMode('topic')}
-                    className="accent-white shrink-0"
-                  />
-                  Topic
-                </label>
+              <div className="mt-6 flex flex-wrap gap-8">
+                {MODE_ITEMS.map((m) => (
+                  <label
+                    key={m.key}
+                    className="flex items-center gap-2 cursor-pointer select-none rounded-xl py-2 transition"
+                  >
+                    <input
+                      type="radio"
+                      name="mode"
+                      value={m.key}
+                      checked={mode === m.key}
+                      onChange={() => setMode(m.key)}
+                      className="sr-only"
+                    />
+                    <span
+                      className={[
+                        'h-5 w-5 rounded-full border transition flex items-center justify-center',
+                        mode === m.key ? 'border-violet-400 bg-violet-500/30' : 'border-white/25 bg-white/5',
+                      ].join(' ')}
+                      aria-hidden="true"
+                    >
+                      <span
+                        className={[
+                          'h-3 w-3 rounded-full transition',
+                          mode === m.key ? 'bg-violet-400' : 'bg-transparent',
+                        ].join(' ')}
+                      />
+                    </span>
+                    <span
+                        className={[
+                          'text-sm text-white/90',
+                           mode === m.key ? 'font-semibold' : '',
+                        ].join(' ')}
+                    >{m.label}</span>
+                  </label>
+                ))}
               </div>
 
               {/* Messages */}
@@ -555,60 +562,62 @@ export default function AdminCreateClient() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-12 sm:items-start">
-                    <div className="sm:col-span-12">
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-12 sm:gap-x-4">
-                        <div className="sm:col-span-6">
-                          <p className="text-white font-semibold text-base leading-none">Word</p>
+                  {/* Word + Article grouped (mobile friendly) */}
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-12">
+                    {/* WORD card */}
+                    <div className="sm:col-span-6 rounded-2xl border border-white/10 bg-white/5 p-5">
+                      <p className="text-white font-semibold text-base leading-none">Word</p>
+
+                      <div className="mt-4 grid grid-cols-1 gap-4">
+                        <div className="grid gap-2">
+                          <label className="text-sm text-white/60">Singular</label>
+                          <input
+                            value={wordForm.word_singular}
+                            onChange={(e) => setWF('word_singular', e.target.value)}
+                            className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
+                            required
+                          />
                         </div>
-                        <div className="sm:col-span-6">
-                          <p className="text-white font-semibold text-base leading-none">Article</p>
+
+                        <div className="grid gap-2">
+                          <label className="text-sm text-white/60">Plural</label>
+                          <input
+                            value={wordForm.word_plural}
+                            onChange={(e) => setWF('word_plural', e.target.value)}
+                            className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* ARTICLE card */}
+                    <div className="sm:col-span-6 rounded-2xl border border-white/10 bg-white/5 p-5">
+                      <p className="text-white font-semibold text-base leading-none">Article</p>
+
+                      <div className="mt-4 grid grid-cols-1 gap-4">
+                        <div className="grid gap-2">
+                          <label className="text-sm text-white/60">Singular</label>
+                          <input
+                            value={wordForm.article_singular}
+                            onChange={(e) => setWF('article_singular', e.target.value)}
+                            className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
+                          />
                         </div>
 
-                        <div className="sm:col-span-12 grid grid-cols-1 gap-4 sm:grid-cols-12 sm:gap-x-4">
-                          <div className="grid gap-2 sm:col-span-3">
-                            <label className="text-sm text-white/60">Singular</label>
-                            <input
-                              value={wordForm.word_singular}
-                              onChange={(e) => setWF('word_singular', e.target.value)}
-                              className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
-                              required
-                            />
-                          </div>
-
-                          <div className="grid gap-2 sm:col-span-3">
-                            <label className="text-sm text-white/60">Plural</label>
-                            <input
-                              value={wordForm.word_plural}
-                              onChange={(e) => setWF('word_plural', e.target.value)}
-                              className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
-                            />
-                          </div>
-
-                          <div className="grid gap-2 sm:col-span-3">
-                            <label className="text-sm text-white/60">Singular</label>
-                            <input
-                              value={wordForm.article_singular}
-                              onChange={(e) => setWF('article_singular', e.target.value)}
-                              className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
-                            />
-                          </div>
-
-                          <div className="grid gap-2 sm:col-span-3">
-                            <label className="text-sm text-white/60">Plural</label>
-                            <input
-                              value={wordForm.article_plural}
-                              onChange={(e) => setWF('article_plural', e.target.value)}
-                              className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
-                            />
-                          </div>
+                        <div className="grid gap-2">
+                          <label className="text-sm text-white/60">Plural</label>
+                          <input
+                            value={wordForm.article_plural}
+                            onChange={(e) => setWF('article_plural', e.target.value)}
+                            className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
+                          />
                         </div>
                       </div>
                     </div>
                   </div>
 
                   {/* Translations grouped row */}
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-12 sm:items-start">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-12 sm:items-start border border-white/10 bg-white/5 rounded-2xl p-5">
                     <div className="sm:col-span-12">
                       <p className="text-white font-semibold text-base leading-none">Translations</p>
 

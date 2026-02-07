@@ -114,7 +114,6 @@ export default function TrainCardsReview() {
   const [isFlipped, setIsFlipped] = useState(false)
 
   // session stats
-  const [learnedToday, setLearnedToday] = useState(0)
   const [correctThisSession, setCorrectThisSession] = useState(0)
   const [praise, setPraise] = useState(
     () => PRAISE_LINES[Math.floor(Math.random() * PRAISE_LINES.length)],
@@ -196,7 +195,6 @@ export default function TrainCardsReview() {
   // reset UI when params change
   useEffect(() => {
     setPraise(PRAISE_LINES[Math.floor(Math.random() * PRAISE_LINES.length)])
-    setLearnedToday(0)
     setCorrectThisSession(0)
     setDone(false)
     setLessonCleared(false)
@@ -265,7 +263,6 @@ export default function TrainCardsReview() {
 
           setWords((data ?? []) as WordRow[])
           setIndex(0)
-          setLearnedToday(0)
           setCorrectThisSession(0)
           setIsFlipped(false)
         }
@@ -281,7 +278,6 @@ export default function TrainCardsReview() {
 
           setWords((data ?? []) as WordRow[])
           setIndex(0)
-          setLearnedToday(0)
           setCorrectThisSession(0)
 
           // pool for distractors (DE strings)
@@ -306,7 +302,6 @@ export default function TrainCardsReview() {
 
           setWords((data ?? []) as WordRow[])
           setIndex(0)
-          setLearnedToday(0)
           setCorrectThisSession(0)
 
           // input init
@@ -450,7 +445,6 @@ export default function TrainCardsReview() {
       setError(e?.message ?? 'Failed to save progress')
       return
     }
-    setLearnedToday((v) => v + 1)
     goNext()
   }
 
@@ -505,14 +499,13 @@ export default function TrainCardsReview() {
     if (isCorrect) setCorrectThisSession((v) => v + 1)
 
     try {
-      const { data: learnedNow, error } = await supabase.rpc('apply_word_answer', {
+      const { error } = await supabase.rpc('apply_word_answer', {
         p_word_id: current.id,
         p_mode: 'single',
         p_correct: isCorrect,
       })
       if (error) throw error
 
-      if (learnedNow) setLearnedToday((v) => v + 1)
     } catch (e: any) {
       setError(e?.message ?? 'Failed to save progress')
     }
@@ -538,14 +531,13 @@ export default function TrainCardsReview() {
     if (isCorrect) setCorrectThisSession((v) => v + 1)
 
     try {
-      const { data: learnedNow, error } = await supabase.rpc('apply_word_answer', {
+      const { error } = await supabase.rpc('apply_word_answer', {
         p_word_id: current.id,
         p_mode: 'writing',
         p_correct: isCorrect,
       })
       if (error) throw error
 
-      if (learnedNow) setLearnedToday((v) => v + 1)
     } catch (e: any) {
       setError(e?.message ?? 'Failed to save progress')
     }

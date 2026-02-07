@@ -164,22 +164,22 @@ export default function GermanPage() {
                     <div
                         key={b.id}
                         className={[
-                        "group w-44 shrink-0 flex flex-col items-center",
-                        "transform-gpu transition-transform duration-300 ease-out",
-                        "hover:scale-[1.06]",
+                          "group w-44 shrink-0 flex flex-col items-center",
+                          "transform-gpu transition-transform duration-300 ease-out",
+                          "sm:hover:scale-[1.06]",
                         ].join(" ")}
                     >
                         <button
                         type="button"
                         className={[
-                            "relative isolate overflow-hidden rounded-sm",
-                            "border border-white/10 bg-white/5",
-                            "aspect-[2/3] w-full",
-                            "shadow-[0_10px_30px_-15px_rgba(0,0,0,0.7)]",
-                            "transition-all duration-300 ease-out",
-                            "group-hover:border-white/25 group-hover:bg-white/10",
-                            "group-hover:shadow-[0_18px_45px_-25px_rgba(255,255,255,0.35)]",
-                            "focus:outline-none focus:ring-2 focus:ring-white/15",
+                          "relative isolate overflow-hidden rounded-sm",
+                          "border border-white/20 bg-white/12",
+                          "aspect-[2/3] w-full",
+                          "shadow-[0_12px_34px_-18px_rgba(0,0,0,0.6)]",
+                          "transition-all duration-300 ease-out",
+                          "sm:group-hover:border-white/30 sm:group-hover:bg-white/18",
+                          "sm:group-hover:shadow-[0_18px_45px_-25px_rgba(255,255,255,0.35)]",
+                          "focus:outline-none focus:ring-2 focus:ring-white/15",
                         ].join(" ")}
                         onClick={() => {
                           router.push(`/train/setup?bookId=${String(b.id)}&lang=german`)
@@ -193,12 +193,12 @@ export default function GermanPage() {
                             loading="lazy"
                             draggable={false}
                             />
-                            <div className="absolute inset-0 bg-black/20 transition-opacity duration-300 group-hover:opacity-10" />
+                            <div className="absolute inset-0 bg-black/10 transition-opacity duration-300 sm:group-hover:opacity-5" />
                         </div>
                         </button>
                         <p
                         className={[
-                            "min-h-[40px] mt-3 text-sm font-semibold text-white/70 text-center leading-tight",
+                            "min-h-[40px] mt-3 text-sm font-semibold text-white/80 text-center leading-tight",
                             "transition-colors duration-300 group-hover:text-white",
                         ].join(" ")}
                         >
