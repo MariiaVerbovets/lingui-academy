@@ -196,7 +196,7 @@ export default function SetupClient({ bookId }: { bookId: string }) {
 
       <div className="relative min-h-screen flex flex-col">
         <div className="flex flex-1 items-center justify-center py-10 sm:py-16">
-          <div className="w-full max-w-xl">
+          <div className="w-full max-w-2xl">
             <div className="min-h-[40vh] rounded-3xl border border-white/15 bg-white/10 backdrop-blur-2xl py-10 px-6 sm:py-14 sm:px-10 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.7)]">
               {/* Header (inside card) */}
               <div className="flex items-center gap-3">
