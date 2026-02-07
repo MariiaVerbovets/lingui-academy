@@ -182,7 +182,7 @@ export default function GermanPage() {
                             "focus:outline-none focus:ring-2 focus:ring-white/15",
                         ].join(" ")}
                         onClick={() => {
-                            // TODO: navigate/select book
+                          router.push(`/train/setup?bookId=${String(b.id)}&from=${encodeURIComponent('/languages/german')}`)
                         }}
                         >
                         <div className="absolute inset-0">
