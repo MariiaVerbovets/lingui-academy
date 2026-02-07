@@ -19,20 +19,15 @@ type RawLessonRow = {
 export default function SetupClient({ bookId }: { bookId: string }) {
   const router = useRouter()
   const sp = useSearchParams()
-  const from = sp.get('from')
+  const lang = sp.get('lang')
   const [isAdmin, setIsAdmin] = useState(false)
 
   const goBack = () => {
-    if (from) {
-      router.push(from)
+    if (lang) {
+      router.push(`/languages/${encodeURIComponent(lang)}`)
       return
     }
-
-    if (typeof window !== 'undefined' && window.history.length > 1) {
-      router.back()
-    } else {
-      router.push('/languages')
-    }
+    router.push('/languages')
   }
 
   const [loading, setLoading] = useState(true)
@@ -108,8 +103,7 @@ export default function SetupClient({ bookId }: { bookId: string }) {
   const writingPct = selectedRow?.writing_percent ?? 0
 
   const canStart = useMemo(() => {
-    // пока запускаем только cards
-    return !!bookId && selectedLesson !== null && mode === 'cards'
+    return !!bookId && selectedLesson !== null && (mode === 'cards'|| mode === 'single')
   }, [bookId, selectedLesson, mode])
 
   const start = () => {
@@ -118,8 +112,8 @@ export default function SetupClient({ bookId }: { bookId: string }) {
     const params = new URLSearchParams({
       bookId: String(bookId),
       lesson: String(selectedLesson),
-      mode, // сейчас будет 'cards'
-      ...(from ? { from } : {}),
+      mode,
+      ...(lang ? { lang } : {}),
     })
 
     router.push(`/train?${params.toString()}`)
@@ -201,7 +195,7 @@ export default function SetupClient({ bookId }: { bookId: string }) {
               {/* Header (inside card) */}
               <div className="flex items-center gap-3">
                 <div className="h-11 w-11 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center">
-                  <span className="text-xl">🐧</span>
+                  <span className="text-xl">{lang === 'german' ? '🇩🇪' : lang === 'portuguese' ? '🇵🇹' : '🐧'}</span>
                 </div>
                 <div>
                   <p className="text-sm text-white/60">Lingui Academy</p>
@@ -225,40 +219,30 @@ export default function SetupClient({ bookId }: { bookId: string }) {
 
               {/* Lessons */}
               <div className="mt-6 space-y-2">
-                <div className="text-sm font-medium text-white/80">Lesson</div>
+                <div className="text-md font-medium text-white/80">Lesson</div>
+                  <select
+                    value={selectedLesson ?? ''}
+                    onChange={(e) => setSelectedLesson(e.target.value ? Number(e.target.value) : null)}
+                    className="w-full h-8 bg-transparent text-white/80 outline-none text-sm font-semibold"
+                  >
+                    <option value="" disabled className="text-slate-950">
+                      Select lesson…
+                    </option>
 
-                <div className="grid gap-2">
-                  {rows.map((r) => (
-                    <button
-                      key={r.lesson}
-                      type="button"
-                      onClick={() => setSelectedLesson(r.lesson)}
-                      className={[
-                        'rounded-2xl px-4 py-3 text-left text-sm font-semibold transition',
-                        selectedLesson === r.lesson
-                          ? 'bg-white text-slate-950 shadow-lg shadow-white/10'
-                          : 'bg-white/10 text-white/80 border border-white/10 hover:bg-white/15',
-                      ].join(' ')}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          Lesson {r.lesson}{' '}
-                          <span className="opacity-50">({r.total_words})</span>
-                        </div>
 
-                        <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-white/80">
-                          <span>Overall</span>
-                          <span>{r.overall_percent}%</span>
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
+                    {[...rows]
+                      .sort((a, b) => `Lesson ${a.lesson}`.localeCompare(`Lesson ${b.lesson}`))
+                      .map((r) => (
+                        <option key={r.lesson} value={r.lesson} className="text-slate-950">
+                          {`Lesson ${r.lesson} (${r.total_words}) — Overall ${r.overall_percent}%`}
+                        </option>
+                      ))}
+                  </select>
               </div>
 
               {/* Modes */}
               <div className="mt-6 space-y-2">
-                <div className="text-sm font-medium text-white/80">Training mode</div>
+                <div className="text-md font-medium text-white/80">Training mode</div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <button
@@ -277,9 +261,12 @@ export default function SetupClient({ bookId }: { bookId: string }) {
                   <button
                     type="button"
                     onClick={() => setMode('single')}
-                    disabled
-                    className="rounded-2xl px-4 py-3 text-sm font-semibold bg-white/5 text-white/35 border border-white/10 cursor-not-allowed"
-                    title="Coming later"
+                    className={[
+                      'rounded-2xl px-4 py-3 text-sm font-semibold transition',
+                      mode === 'single'
+                        ? 'bg-white text-slate-950 shadow-lg shadow-white/10'
+                        : 'bg-white/10 text-white/80 border border-white/10 hover:bg-white/15',
+                    ].join(' ')}
                   >
                     Single choice <span className="opacity-60">({singlePct}%)</span>
                   </button>
