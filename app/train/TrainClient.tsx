@@ -9,13 +9,16 @@ type TrainMode = 'cards' | 'single' | 'writing'
 type WordRow = {
   id: number
   word_singular: string
+  word_plural: string | null
+  article_singular: string | null
+  article_plural: string | null
   translation_ru: string | null
   translation_ukr: string | null
   translation_en: string | null
   picture: string | null
 }
 
-type PoolRow = { id: number; word_singular: string }
+type PoolRow = { id: number; word_singular: string; article_singular: string | null }
 
 type Option = {
   id: number
@@ -49,6 +52,47 @@ function pickRandom<T>(arr: T[], n: number): T[] {
   return shuffle(arr).slice(0, n)
 }
 
+function normalizeAnswer(s: string) {
+  return s
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+}
+
+function formatExpectedWriting(w: WordRow) {
+  const a = (w.article_singular ?? '').trim()
+  const s = w.word_singular.trim()
+  return a ? `${a} ${s}` : s
+}
+
+function formatCardsWord(w: WordRow) {
+  const s = `${w.article_singular ? w.article_singular + ' ' : ''}${w.word_singular}`.trim()
+
+  const pluralWord = (w.word_plural ?? '').trim()
+  const pluralArt = (w.article_plural ?? '').trim()
+
+  const hasPlural =
+    pluralWord.length > 0 &&
+    !isDash(pluralWord) &&
+    !isDash(pluralArt) &&
+    pluralWord.toLowerCase() !== w.word_singular.trim().toLowerCase()
+
+  if (!hasPlural) return s
+
+  const p = `${pluralArt ? pluralArt + ' ' : ''}${pluralWord}`.trim()
+  return `${s}, ${p}`
+}
+
+function formatExpectedSingle(w: WordRow) {
+  const a = (w.article_singular ?? '').trim()
+  const s = w.word_singular.trim()
+  return a ? `${a} ${s}` : s
+}
+
+function isDash(v: string | null | undefined) {
+  return (v ?? '').trim() === '-'
+}
+
 export default function TrainCardsReview() {
   const router = useRouter()
   const sp = useSearchParams()
@@ -71,6 +115,7 @@ export default function TrainCardsReview() {
 
   // session stats
   const [learnedToday, setLearnedToday] = useState(0)
+  const [correctThisSession, setCorrectThisSession] = useState(0)
   const [praise, setPraise] = useState(
     () => PRAISE_LINES[Math.floor(Math.random() * PRAISE_LINES.length)],
   )
@@ -89,6 +134,20 @@ export default function TrainCardsReview() {
   const [options, setOptions] = useState<Option[]>([])
   const [answered, setAnswered] = useState(false)
   const [selectedOptionId, setSelectedOptionId] = useState<number | null>(null)
+  const ARTICLES = ['der', 'die', 'das'] as const
+  type Article = (typeof ARTICLES)[number]
+  const [selectedArticle, setSelectedArticle] = useState<Article | null>(null)
+  const [singleWasCorrect, setSingleWasCorrect] = useState<boolean | null>(null)
+  const [singleWordCorrect, setSingleWordCorrect] = useState<boolean | null>(null)
+  const [singleArticleCorrect, setSingleArticleCorrect] = useState<boolean | null>(null)
+
+  // ===== WRITING state =====
+  const [writingValue, setWritingValue] = useState('')
+  const [writingChecked, setWritingChecked] = useState(false)
+  const [writingWasCorrect, setWritingWasCorrect] = useState<boolean | null>(null)
+  const inputRef = useRef<HTMLInputElement | null>(null)
+
+  // shared timer
   const timerRef = useRef<number | null>(null)
 
   const current = words[index] ?? null
@@ -98,6 +157,16 @@ export default function TrainCardsReview() {
     const l = lesson ? `Lesson ${lesson}` : 'Lesson'
     return `${l}`
   }, [lesson])
+
+  // ===== main training UI =====
+  const headerTitle = mode === 'cards' ? 'Cards review' : mode === 'single' ? 'Single choice' : 'Writing'
+  const needsArticle = !!current?.article_singular?.trim()
+  const promptText =
+    current?.translation_ukr?.trim()
+      ? current.translation_ukr
+      : current?.translation_en?.trim()
+        ? current.translation_en
+        : 'No translation'
 
   const Bg = () => (
     <div className="pointer-events-none absolute inset-0">
@@ -109,7 +178,12 @@ export default function TrainCardsReview() {
   )
 
   const finishTraining = () => {
-    router.push(`/train/setup?bookId=${encodeURIComponent(bookId)}`)
+    const params = new URLSearchParams({
+        bookId: String(bookId),
+        lesson: String(lesson),
+    })
+
+    router.push(`/train/setup?${params.toString()}`)
   }
 
   // cleanup timers
@@ -123,6 +197,7 @@ export default function TrainCardsReview() {
   useEffect(() => {
     setPraise(PRAISE_LINES[Math.floor(Math.random() * PRAISE_LINES.length)])
     setLearnedToday(0)
+    setCorrectThisSession(0)
     setDone(false)
     setLessonCleared(false)
     setCheckingLessonCleared(false)
@@ -140,6 +215,18 @@ export default function TrainCardsReview() {
     setOptions([])
     setAnswered(false)
     setSelectedOptionId(null)
+    setSelectedArticle(null)
+    setSingleWasCorrect(null)
+    setSingleWordCorrect(null)
+    setSingleArticleCorrect(null)
+
+    // writing reset
+    setWritingValue('')
+    setWritingChecked(false)
+    setWritingWasCorrect(null)
+
+    if (timerRef.current) window.clearTimeout(timerRef.current)
+    timerRef.current = null
   }, [bookId, lesson, mode])
 
   // ===== LOAD WORDS depending on mode =====
@@ -178,11 +265,12 @@ export default function TrainCardsReview() {
 
           setWords((data ?? []) as WordRow[])
           setIndex(0)
+          setLearnedToday(0)
+          setCorrectThisSession(0)
           setIsFlipped(false)
         }
 
         if (mode === 'single') {
-          // universal function for single/writing
           const { data, error } = await supabase.rpc('get_train_words', {
             p_book_id: parsedBookId,
             p_lesson: parsedLesson,
@@ -193,11 +281,13 @@ export default function TrainCardsReview() {
 
           setWords((data ?? []) as WordRow[])
           setIndex(0)
+          setLearnedToday(0)
+          setCorrectThisSession(0)
 
           // pool for distractors (DE strings)
           const { data: p, error: pe } = await supabase
             .from('words')
-            .select('id, word_singular')
+            .select('id, word_singular, article_singular')
             .eq('book_id', parsedBookId)
             .eq('lesson', parsedLesson)
 
@@ -205,7 +295,25 @@ export default function TrainCardsReview() {
           setPool((p ?? []) as PoolRow[])
         }
 
-        // writing later...
+        if (mode === 'writing') {
+          const { data, error } = await supabase.rpc('get_train_words', {
+            p_book_id: parsedBookId,
+            p_lesson: parsedLesson,
+            p_mode: 'writing',
+            p_limit: 10,
+          })
+          if (error) throw error
+
+          setWords((data ?? []) as WordRow[])
+          setIndex(0)
+          setLearnedToday(0)
+          setCorrectThisSession(0)
+
+          // input init
+          setWritingValue('')
+          setWritingChecked(false)
+          setWritingWasCorrect(null)
+        }
       } catch (e: any) {
         setError(e?.message ?? 'Unknown error')
       } finally {
@@ -219,8 +327,19 @@ export default function TrainCardsReview() {
   // ===== NEXT =====
   const goNext = () => {
     setIsFlipped(false)
+
+    // single reset per card
     setAnswered(false)
     setSelectedOptionId(null)
+    setSelectedArticle(null)
+    setSingleWasCorrect(null)
+    setSingleWordCorrect(null)
+    setSingleArticleCorrect(null)
+
+    // writing reset per card
+    setWritingValue('')
+    setWritingChecked(false)
+    setWritingWasCorrect(null)
 
     setIndex((i) => {
       const next = i + 1
@@ -230,6 +349,11 @@ export default function TrainCardsReview() {
       }
       return next
     })
+
+    // focus input when writing
+    if (mode === 'writing') {
+      window.setTimeout(() => inputRef.current?.focus(), 50)
+    }
   }
 
   // ===== CHECK "lesson cleared?" when done =====
@@ -257,6 +381,17 @@ export default function TrainCardsReview() {
             p_book_id: parsedBookId,
             p_lesson: parsedLesson,
             p_mode: 'single',
+            p_limit: 1,
+          })
+          if (error) throw error
+          setLessonCleared((data ?? []).length === 0)
+        }
+
+        if (mode === 'writing') {
+          const { data, error } = await supabase.rpc('get_train_words', {
+            p_book_id: parsedBookId,
+            p_lesson: parsedLesson,
+            p_mode: 'writing',
             p_limit: 1,
           })
           if (error) throw error
@@ -290,11 +425,11 @@ export default function TrainCardsReview() {
       const { error } = await supabase.rpc('reset_progress_for_lesson', {
         p_book_id: parsedBookId,
         p_lesson: parsedLesson,
-        p_mode: mode, // cards | single | writing
+        p_mode: mode,
       })
       if (error) throw error
 
-      router.push(`/train/setup?bookId=${encodeURIComponent(bookId)}`)
+      router.push(`/train/setup?bookId=${encodeURIComponent(bookId)}&lesson=${encodeURIComponent(lesson)}`)
     } catch (e: any) {
       setResetError(e?.message ?? 'Failed to reset progress')
     } finally {
@@ -331,6 +466,7 @@ export default function TrainCardsReview() {
 
     setAnswered(false)
     setSelectedOptionId(null)
+    setSelectedArticle(null)
 
     const distractorPool = pool.filter((x) => x.id !== current.id && x.word_singular?.trim())
     const distractors = pickRandom(distractorPool, 3)
@@ -346,12 +482,27 @@ export default function TrainCardsReview() {
   // ===== SINGLE: answer =====
   const answerSingle = async (opt: Option) => {
     if (!current) return
+    if (needsArticle && !selectedArticle) return
     if (answered) return
 
     setAnswered(true)
     setSelectedOptionId(opt.id)
 
-    const isCorrect = opt.isCorrect
+    const wordCorrect = opt.isCorrect
+
+    let articleCorrect = true
+    if (needsArticle) {
+    const correctArticleRaw = (current.article_singular ?? '').trim().toLowerCase()
+    const correctArticle = (correctArticleRaw as Article) || null
+    articleCorrect = !!correctArticle && selectedArticle === correctArticle
+    }
+
+    setSingleWordCorrect(wordCorrect)
+    setSingleArticleCorrect(articleCorrect)
+
+    const isCorrect = wordCorrect && articleCorrect
+    setSingleWasCorrect(isCorrect)
+    if (isCorrect) setCorrectThisSession((v) => v + 1)
 
     try {
       const { data: learnedNow, error } = await supabase.rpc('apply_word_answer', {
@@ -361,14 +512,45 @@ export default function TrainCardsReview() {
       })
       if (error) throw error
 
-      if (learnedNow) {
-        setLearnedToday((v) => v + 1)
-      }
+      if (learnedNow) setLearnedToday((v) => v + 1)
     } catch (e: any) {
       setError(e?.message ?? 'Failed to save progress')
     }
 
-    const delay = isCorrect ? 1000 : 1500
+    const delay = isCorrect ? 1000 : 2000
+    if (timerRef.current) window.clearTimeout(timerRef.current)
+    timerRef.current = window.setTimeout(() => {
+      goNext()
+    }, delay)
+  }
+
+  // ===== WRITING: submit =====
+  const submitWriting = async () => {
+    if (!current) return
+    if (writingChecked) return
+
+    const expected = normalizeAnswer(formatExpectedWriting(current))
+    const given = normalizeAnswer(writingValue)
+    const isCorrect = expected.length > 0 && given === expected
+
+    setWritingChecked(true)
+    setWritingWasCorrect(isCorrect)
+    if (isCorrect) setCorrectThisSession((v) => v + 1)
+
+    try {
+      const { data: learnedNow, error } = await supabase.rpc('apply_word_answer', {
+        p_word_id: current.id,
+        p_mode: 'writing',
+        p_correct: isCorrect,
+      })
+      if (error) throw error
+
+      if (learnedNow) setLearnedToday((v) => v + 1)
+    } catch (e: any) {
+      setError(e?.message ?? 'Failed to save progress')
+    }
+
+    const delay = isCorrect ? 1000 : 2000
     if (timerRef.current) window.clearTimeout(timerRef.current)
     timerRef.current = window.setTimeout(() => {
       goNext()
@@ -450,7 +632,7 @@ export default function TrainCardsReview() {
 
             <div className="mt-5">
               <p className="text-4xl font-semibold text-white">
-                {learnedToday} / {total}
+                {correctThisSession} / {total}
               </p>
             </div>
 
@@ -482,9 +664,6 @@ export default function TrainCardsReview() {
     )
   }
 
-  // ===== main training UI =====
-  const headerTitle = mode === 'cards' ? 'Cards review' : mode === 'single' ? 'Single choice' : 'Writing'
-
   return (
     <main className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 px-4">
       <Bg />
@@ -509,7 +688,7 @@ export default function TrainCardsReview() {
                   {index + 1} / {total}
                 </div>
 
-                {/* ===== CARDS MODE (as you already have) ===== */}
+                {/* ===== CARDS MODE ===== */}
                 {mode === 'cards' && (
                   <>
                     <button
@@ -532,7 +711,7 @@ export default function TrainCardsReview() {
                               {current.picture ? (
                                 <img
                                   src={current.picture}
-                                  alt={current.word_singular}
+                                  alt={formatCardsWord(current)}
                                   className="h-full w-full object-cover"
                                   draggable={false}
                                 />
@@ -544,7 +723,7 @@ export default function TrainCardsReview() {
                             </div>
 
                             <div className="mt-4 text-center text-lg font-semibold text-white">
-                              {current.word_singular}
+                              {formatCardsWord(current)}
                             </div>
                           </div>
 
@@ -552,7 +731,7 @@ export default function TrainCardsReview() {
                           <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)]">
                             <div className="h-full w-full rounded-2xl border border-white/10 bg-white/10 backdrop-blur-xl p-5 flex flex-col justify-center">
                               <div className="text-center">
-                                <div className="text-lg font-semibold text-white">{current.word_singular}</div>
+                                <div className="text-lg font-semibold text-white">{formatCardsWord(current)}</div>
 
                                 <div className="mt-4 space-y-2 text-sm text-white/80">
                                   {current.translation_en && (
@@ -575,8 +754,6 @@ export default function TrainCardsReview() {
                                     <div className="text-white/40">No translations.</div>
                                   )}
                                 </div>
-
-                                <p className="mt-5 text-xs text-white/40">Tap the card to flip</p>
                               </div>
                             </div>
                           </div>
@@ -623,7 +800,6 @@ export default function TrainCardsReview() {
                 {/* ===== SINGLE MODE ===== */}
                 {mode === 'single' && (
                   <>
-                    {/* image (not clickable) */}
                     <div className="h-full w-full overflow-hidden rounded-2xl border border-white/10 bg-white/5 aspect-square">
                       {current.picture ? (
                         <img
@@ -637,30 +813,56 @@ export default function TrainCardsReview() {
                       )}
                     </div>
 
-                    {/* prompt: UA */}
-                    <div className="mt-4 text-center text-lg font-semibold text-white">
-                      {current.translation_ukr?.trim() ? current.translation_ukr : current.translation_en?.trim() ? current.translation_en : 'No translation'}
-                    </div>
+                    <div className="mt-4 text-center text-lg font-semibold text-white">{promptText}</div>
+                        {needsArticle && (
+                        <div className="mt-6 grid grid-cols-3 gap-2">
+                            {ARTICLES.map((a) => {
+                            const correctArticle = ((current.article_singular ?? '').trim().toLowerCase() as Article) || null
 
-                    {/* answers: DE */}
+                            const isSel = selectedArticle === a
+                            const isCorrect = answered && !!correctArticle && a === correctArticle
+                            const isWrongSel = answered && isSel && !isCorrect
+
+                            const cls = [
+                                'rounded-2xl px-4 py-3 text-sm font-semibold transition border',
+                                isCorrect
+                                ? 'bg-emerald-500/15 text-emerald-100 border-emerald-400/30'
+                                : isWrongSel
+                                ? 'bg-red-500/15 text-red-100 border-red-400/30'
+                                : isSel
+                                ? 'bg-white text-slate-950 border-white/10 shadow-lg shadow-white/10'
+                                : 'bg-white/10 text-white/90 border-white/10 hover:bg-white/15',
+                                answered ? 'opacity-80' : '',
+                            ].join(' ')
+
+                            return (
+                                <button
+                                key={a}
+                                type="button"
+                                disabled={answered}
+                                onClick={() => setSelectedArticle(a)}
+                                className={cls}
+                                >
+                                {a}
+                                </button>
+                            )
+                            })}
+                        </div>
+                        )}
+
                     <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {options.map((opt) => {
                         const isSelected = selectedOptionId === opt.id
                         const showCorrect = answered && opt.isCorrect
                         const showWrong = answered && isSelected && !opt.isCorrect
 
-                        const base =
-                          'w-full rounded-2xl px-4 py-3 text-sm font-semibold transition border'
+                        const base = 'w-full rounded-2xl px-4 py-3 text-sm font-semibold transition border'
                         const normal = 'bg-white/10 text-white/90 border-white/10 hover:bg-white/15'
                         const correct = 'bg-emerald-500/15 text-emerald-100 border-emerald-400/30'
                         const wrong = 'bg-red-500/15 text-red-100 border-red-400/30'
                         const disabled = 'opacity-80'
 
-                        const cls = [
-                          base,
-                          showCorrect ? correct : showWrong ? wrong : normal,
-                          answered ? disabled : '',
-                        ].join(' ')
+                        const cls = [base, showCorrect ? correct : showWrong ? wrong : normal, answered ? disabled : ''].join(' ')
 
                         return (
                           <button
@@ -675,6 +877,67 @@ export default function TrainCardsReview() {
                         )
                       })}
                     </div>
+                  </>
+                )}
+
+                {/* ===== WRITING MODE ===== */}
+                {mode === 'writing' && (
+                  <>
+                    <div className="h-full w-full overflow-hidden rounded-2xl border border-white/10 bg-white/5 aspect-square">
+                      {current.picture ? (
+                        <img
+                          src={current.picture}
+                          alt="card"
+                          className="h-full w-full object-cover"
+                          draggable={false}
+                        />
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center text-white/40">No image</div>
+                      )}
+                    </div>
+
+                    <div className="mt-4 text-center text-lg font-semibold text-white">{promptText}</div>
+
+                    <div className="mt-6 flex items-stretch gap-2">
+                      <input
+                        ref={inputRef}
+                        value={writingValue}
+                        onChange={(e) => setWritingValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') submitWriting()
+                        }}
+                        disabled={writingChecked}
+                        className={[
+                          'flex-1 rounded-2xl px-4 py-3 text-sm font-semibold outline-none border transition',
+                          'placeholder:text-white/40',
+                          writingChecked
+                            ? writingWasCorrect
+                              ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-100'
+                              : 'border-red-400/30 bg-red-500/10 text-red-100'
+                            : 'border-white/10 focus:border-white/25 bg-white/10 text-white',
+                        ].join(' ')}
+                      />
+
+                      <button
+                        type="button"
+                        onClick={submitWriting}
+                        disabled={writingChecked || !writingValue.trim()}
+                        className={[
+                          'rounded-2xl px-4 py-3 text-sm font-semibold border transition',
+                          writingChecked || !writingValue.trim()
+                            ? 'bg-white/5 text-white/35 border-white/10 opacity-70'
+                            : 'bg-white text-slate-950 border-white/10 hover:-translate-y-[1px] hover:shadow-lg hover:shadow-white/10',
+                        ].join(' ')}
+                      >
+                        Check
+                      </button>
+                    </div>
+
+                    {writingChecked && writingWasCorrect === false && (
+                      <div className="mt-3 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 text-emerald-100 p-3 text-sm">
+                        {formatExpectedWriting(current)}
+                      </div>
+                    )}
                   </>
                 )}
               </>
