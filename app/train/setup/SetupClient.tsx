@@ -17,10 +17,16 @@ type RawLessonRow = {
 }
 
 export default function SetupClient({ bookId }: { bookId: string }) {
+  const [isAdmin, setIsAdmin] = useState(false)
   const router = useRouter()
   const sp = useSearchParams()
   const lang = sp.get('lang')
-  const [isAdmin, setIsAdmin] = useState(false)
+  const lessonFromUrl = sp.get('lesson')
+
+  const parsedLessonFromUrl =
+    lessonFromUrl && Number.isFinite(Number(lessonFromUrl))
+      ? Number(lessonFromUrl)
+      : null
 
   const goBack = () => {
     if (lang) {
@@ -77,10 +83,22 @@ export default function SetupClient({ bookId }: { bookId: string }) {
         setRows(normalized)
 
         if (normalized.length) {
-          setSelectedLesson((prev) => (prev === null ? normalized[0].lesson : prev))
-        } else {
-          setSelectedLesson(null)
+          setSelectedLesson((prev) => {
+            if (prev !== null) return prev
+
+
+            if (
+              parsedLessonFromUrl &&
+              normalized.some((r) => r.lesson === parsedLessonFromUrl)
+            ) {
+              return parsedLessonFromUrl
+            }
+
+
+            return normalized[0].lesson
+          })
         }
+
       } catch (e: any) {
         setError(e?.message ?? 'Unknown error')
         setRows([])
@@ -91,7 +109,7 @@ export default function SetupClient({ bookId }: { bookId: string }) {
     }
 
     run()
-  }, [bookId, router])
+  }, [bookId, router, parsedLessonFromUrl])
 
   const selectedRow = useMemo(() => {
     if (selectedLesson === null) return null
@@ -103,7 +121,7 @@ export default function SetupClient({ bookId }: { bookId: string }) {
   const writingPct = selectedRow?.writing_percent ?? 0
 
   const canStart = useMemo(() => {
-    return !!bookId && selectedLesson !== null && (mode === 'cards'|| mode === 'single')
+    return !!bookId && selectedLesson !== null && (mode === 'cards'|| mode === 'single' || mode === 'writing')
   }, [bookId, selectedLesson, mode])
 
   const start = () => {
@@ -231,7 +249,7 @@ export default function SetupClient({ bookId }: { bookId: string }) {
 
 
                     {[...rows]
-                      .sort((a, b) => `Lesson ${a.lesson}`.localeCompare(`Lesson ${b.lesson}`))
+                      .sort((a, b) => a.lesson - b.lesson)
                       .map((r) => (
                         <option key={r.lesson} value={r.lesson} className="text-slate-950">
                           {`Lesson ${r.lesson} (${r.total_words}) — Overall ${r.overall_percent}%`}
@@ -274,9 +292,12 @@ export default function SetupClient({ bookId }: { bookId: string }) {
                   <button
                     type="button"
                     onClick={() => setMode('writing')}
-                    disabled
-                    className="rounded-2xl px-4 py-3 text-sm font-semibold bg-white/5 text-white/35 border border-white/10 cursor-not-allowed"
-                    title="Coming later"
+                    className={[
+                      'rounded-2xl px-4 py-3 text-sm font-semibold transition',
+                      mode === 'writing'
+                        ? 'bg-white text-slate-950 shadow-lg shadow-white/10'
+                        : 'bg-white/10 text-white/80 border border-white/10 hover:bg-white/15',
+                    ].join(' ')}
                   >
                     Writing <span className="opacity-60">({writingPct}%)</span>
                   </button>
