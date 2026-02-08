@@ -8,6 +8,7 @@ import { getIsAdmin } from '@/lib/isAdmin'
 import { uploadWithIncrement } from '@/lib/uploadImage'
 import { buildBookBase, buildWordBase } from '@/lib/filenames'
 import { ImageUploader } from '../components/imageUploader'
+import Select from '../components/Select'
 
 type Language = 'DE' | 'PT'
 
@@ -45,7 +46,7 @@ const ARTICLES_BY_LANGUAGE: Record<Language, ArticleConfig> = {
 const MODE_ITEMS = [
   { key: 'book' as const, label: '📚 Book' },
   { key: 'word' as const, label: '📝 Word' },
-  { key: 'topic' as const, label: '🎨 Topic' }
+  { key: 'topic' as const, label: '🎨 Topic' },
 ]
 
 export default function AdminCreateClient() {
@@ -78,6 +79,11 @@ export default function AdminCreateClient() {
     language: 'DE' as Language,
     name: '',
   })
+
+  const languageOptions = [
+    { value: 'DE', label: 'DE' },
+    { value: 'PT', label: 'PT' },
+  ]
 
   const setTF = (k: string, v: string) => setTopicForm((p) => ({ ...p, [k]: v }))
 
@@ -117,46 +123,40 @@ export default function AdminCreateClient() {
       const singOk = !sing || cfg.singular.includes(sing)
       const plOk = !pl || cfg.plural.includes(pl)
       return {
-          ...p,
-          article_singular: singOk ? p.article_singular : '' ,
-          article_plural: plOk ? p.article_plural : ''
+        ...p,
+        article_singular: singOk ? p.article_singular : '',
+        article_plural: plOk ? p.article_plural : '',
       }
     })
   }, [wordForm.language])
 
   useEffect(() => {
     if (!ok) return
-
     const t = setTimeout(() => setOk(null), 5000)
     return () => clearTimeout(t)
   }, [ok])
 
+
   useEffect(() => {
     if (!error) return
-
     const t = setTimeout(() => setError(null), 10000)
     return () => clearTimeout(t)
   }, [error])
 
-  const loadBooks = async () => {
-    const { data, error } = await supabase
-      .from('books')
-      .select('id,name,language,picture')
-      .order('name', { ascending: true })
 
+  const loadBooks = async () => {
+    const { data, error } = await supabase.from('books').select('id,name,language,picture').order('name', { ascending: true })
     if (error) throw error
     setBooks((data ?? []) as Book[])
   }
 
-  const loadTopics = async () => {
-    const { data, error } = await supabase
-      .from('topics')
-      .select('id,name,language')
-      .order('name', { ascending: true })
 
+  const loadTopics = async () => {
+    const { data, error } = await supabase.from('topics').select('id,name,language').order('name', { ascending: true })
     if (error) throw error
     setTopics((data ?? []) as Topic[])
   }
+
 
   const refetchAll = async () => {
     setError(null)
@@ -167,6 +167,7 @@ export default function AdminCreateClient() {
     }
   }
 
+
   useEffect(() => {
     const run = async () => {
       const { data } = await supabase.auth.getSession()
@@ -175,46 +176,58 @@ export default function AdminCreateClient() {
         return
       }
 
+
       const isAdmin = await getIsAdmin()
       if (!isAdmin) {
         router.replace('/languages')
         return
       }
 
+
       await refetchAll()
       setLoading(false)
     }
+
 
     run()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router])
 
-  // Books filtered for the word dropdown
-  const booksForSelectedLanguage = useMemo(() => {
-    return books.filter((b) => b.language === wordForm.language)
-  }, [books, wordForm.language])
 
-  // Topics filtered for the word dropdown
-  const topicsForSelectedLanguage = useMemo(() => {
-    return topics.filter((t) => t.language === wordForm.language)
-  }, [topics, wordForm.language])
+  const booksForSelectedLanguage = useMemo(() => books.filter((b) => b.language === wordForm.language), [books, wordForm.language])
+  const topicsForSelectedLanguage = useMemo(() => topics.filter((t) => t.language === wordForm.language), [topics, wordForm.language])
 
-  // Reset messages when switching mode
+  const bookOptions = useMemo(() => {
+    return booksForSelectedLanguage.map((b) => ({
+      value: String(b.id),
+      label: b.name,
+    }))
+  }, [booksForSelectedLanguage])
+
+  const topicOptions = useMemo(() => {
+    return topicsForSelectedLanguage.map((t) => ({
+      value: String(t.id),
+      label: t.name,
+    }))
+  }, [topicsForSelectedLanguage])
+
   useEffect(() => {
     setError(null)
     setOk(null)
   }, [mode])
 
+
   const setWF = (k: string, v: string) => setWordForm((p) => ({ ...p, [k]: v }))
   const setBF = (k: string, v: string) => setBookForm((p) => ({ ...p, [k]: v }))
 
+
   const scrollToTop = () => {
     if (typeof window === 'undefined') return
-
     window.requestAnimationFrame(() => {
       window.scrollTo({ top: 0, behavior: 'smooth' })
     })
   }
+
 
   // ---------- Save book ----------
   const submitBook = async (e: React.FormEvent) => {
@@ -223,15 +236,18 @@ export default function AdminCreateClient() {
     setOk(null)
     scrollToTop()
 
+
     if (!bookForm.name.trim()) {
       setError('Book name is required.')
       return
     }
 
+
     if (!bookForm.picture.trim()) {
       setError('Picture is required.')
       return
     }
+
 
     const payload = {
       language: bookForm.language,
@@ -239,22 +255,22 @@ export default function AdminCreateClient() {
       picture: bookForm.picture.trim(),
     }
 
-    const { error: insErr } = await supabase
-      .from('books')
-      .insert(payload)
-      .select('id,name,language,picture')
-      .single()
+
+    const { error: insErr } = await supabase.from('books').insert(payload).select('id,name,language,picture').single()
+
 
     if (insErr) {
       setError(insErr.message)
       return
     }
 
+
     setOk('Book added ✅')
     setBookForm((p) => ({ ...p, name: '', picture: '' }))
     setBookResetKey((k) => k + 1)
     await refetchAll()
   }
+
 
   // ---------- Save topic ----------
   const submitTopic = async (e: React.FormEvent) => {
@@ -263,32 +279,33 @@ export default function AdminCreateClient() {
     setOk(null)
     scrollToTop()
 
+
     if (!topicForm.name.trim()) {
       setError('Topic name is required.')
       return
     }
+
 
     const payload = {
       language: topicForm.language,
       name: topicForm.name.trim(),
     }
 
-    const { error } = await supabase
-      .from('topics')
-      .insert(payload)
-      .select('id,name,language')
-      .single()
+
+    const { error } = await supabase.from('topics').insert(payload).select('id,name,language').single()
+
 
     if (error) {
       setError(error.message)
       return
     }
 
+
     setOk('Topic added ✅')
     setTopicForm((p) => ({ ...p, name: '' }))
-
     await refetchAll()
   }
+
 
   // ---------- Save word ----------
   const submitWord = async (e: React.FormEvent) => {
@@ -297,20 +314,24 @@ export default function AdminCreateClient() {
     setOk(null)
     scrollToTop()
 
+
     if (!wordForm.book_id) {
       setError('Please select a book.')
       return
     }
+
 
     if (!wordForm.topic_id) {
       setError('Please select a topic.')
       return
     }
 
+
     if (!wordForm.picture.trim()) {
       setError('Picture is required.')
       return
     }
+
 
     let tasksJson: any
     try {
@@ -320,9 +341,11 @@ export default function AdminCreateClient() {
       return
     }
 
+
     const cfg = ARTICLES_BY_LANGUAGE[wordForm.language]
     const sing = wordForm.article_singular.trim()
     const pl = wordForm.article_plural.trim()
+
 
     const payload = {
       language: wordForm.language,
@@ -340,16 +363,19 @@ export default function AdminCreateClient() {
       tasks: tasksJson,
     }
 
+
     if (!payload.word_singular) {
       setError('Word (singular) is required.')
       return
     }
+
 
     const { error: insErr } = await supabase.from('words').insert(payload)
     if (insErr) {
       setError(insErr.message)
       return
     }
+
 
     setOk('Word added ✅')
     setWordForm((p) => ({
@@ -367,6 +393,7 @@ export default function AdminCreateClient() {
     setWordResetKey((k) => k + 1)
   }
 
+
   if (loading) {
     return (
       <main className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 px-4">
@@ -374,6 +401,7 @@ export default function AdminCreateClient() {
       </main>
     )
   }
+
 
   const ArticleChips = ({
     value,
@@ -412,23 +440,22 @@ export default function AdminCreateClient() {
     )
   }
 
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 px-4">
       {/* Back button */}
       <button
         type="button"
         onClick={goBack}
-        className={[
-          'absolute left-6 z-30',
-          'inline-flex items-center gap-2',
-          'text-md text-white/70 hover:text-white',
-          'transition',
-        ].join(' ')}
+        className={['absolute left-6 z-30', 'inline-flex items-center gap-2', 'text-md text-white/70 hover:text-white', 'transition'].join(
+          ' ',
+        )}
         style={{ top: 'calc(env(safe-area-inset-top) + 1rem)' }}
       >
         <span className="text-base">←</span>
         Back
       </button>
+
 
       {/* Background blobs */}
       <div className="pointer-events-none absolute inset-0">
@@ -437,6 +464,7 @@ export default function AdminCreateClient() {
         <div className="absolute bottom-0 -right-24 h-[460px] w-[460px] rounded-full bg-emerald-400/15 blur-3xl" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.10),transparent_55%)]" />
       </div>
+
 
       <div className="relative min-h-screen flex flex-col">
         <div className="flex flex-1 items-center justify-center pt-20 pb-10 sm:pt-16 sm:py-16">
@@ -450,20 +478,16 @@ export default function AdminCreateClient() {
                   </div>
                   <div>
                     <p className="text-sm text-white/60">Lingui Academy • Admin</p>
-                    <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white">
-                      Create content
-                    </h1>
+                    <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white">Create content</h1>
                   </div>
                 </div>
               </div>
 
+
               {/* Mode switch (radio) */}
               <div className="mt-6 flex flex-wrap gap-8">
                 {MODE_ITEMS.map((m) => (
-                  <label
-                    key={m.key}
-                    className="flex items-center gap-2 cursor-pointer select-none rounded-xl py-2 transition"
-                  >
+                  <label key={m.key} className="flex items-center gap-2 cursor-pointer select-none rounded-xl py-2 transition">
                     <input
                       type="radio"
                       name="mode"
@@ -479,56 +503,41 @@ export default function AdminCreateClient() {
                       ].join(' ')}
                       aria-hidden="true"
                     >
-                      <span
-                        className={[
-                          'h-3 w-3 rounded-full transition',
-                          mode === m.key ? 'bg-violet-400' : 'bg-transparent',
-                        ].join(' ')}
-                      />
+                      <span className={['h-3 w-3 rounded-full transition', mode === m.key ? 'bg-violet-400' : 'bg-transparent'].join(' ')} />
                     </span>
-                    <span
-                        className={[
-                          'text-md text-white/90',
-                           mode === m.key ? 'font-semibold' : '',
-                        ].join(' ')}
-                    >{m.label}</span>
+                    <span className={['text-md text-white/90', mode === m.key ? 'font-semibold' : ''].join(' ')}>{m.label}</span>
                   </label>
                 ))}
               </div>
 
+
               {/* Messages */}
-              {error && (
-                <div className="mt-5 inline-flex rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-md text-red-200">
-                  {error}
-                </div>
-              )}
-              {ok && (
-                <div className="mt-5 inline-flex rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm text-emerald-200">
-                  {ok}
-                </div>
-              )}
+              {error && <div className="mt-5 inline-flex rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-md text-red-200">{error}</div>}
+              {ok && <div className="mt-5 inline-flex rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm text-emerald-200">{ok}</div>}
+
 
               {/* Forms */}
               <div className="mt-6">
                 {mode === 'book' ? (
                   <form onSubmit={submitBook} className="grid gap-4">
                     <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-12 sm:gap-x-12">
-                      <div className="grid gap-2 sm:col-span-2">
+                      <div className="grid gap-2 sm:col-span-3">
                         <label className="text-md text-white/80">Language</label>
-                        <select
+
+
+                        <Select
                           value={bookForm.language}
-                          onChange={(e) => {
-                            setBF('language', e.target.value)
+                          onChange={(v) => {
+                            setBF('language', v)
                             setBF('picture', '')
                           }}
-                          className="w-full h-10 rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
-                        >
-                          <option value="DE">DE</option>
-                          <option value="PT">PT</option>
-                        </select>
+                          options={languageOptions}
+                          placeholder='Language'
+                        />
                       </div>
 
-                      <div className="grid gap-2 sm:col-span-4">
+
+                      <div className="grid gap-2 sm:col-span-5">
                         <label className="text-md text-white/80">Book name</label>
                         <input
                           value={bookForm.name}
@@ -539,27 +548,29 @@ export default function AdminCreateClient() {
                       </div>
                     </div>
 
+
                     <div className="grid gap-2 mt-6">
-                        <label className="text-md text-white/80">Picture</label>
-                          <ImageUploader
-                            value={bookForm.picture}
-                            resetKey={bookResetKey}
-                            onChange={(url) => setBF('picture', url)}
-                            onError={(msg) => setError(msg)}
-                            upload={async (file) => {
-                              const baseName = buildBookBase(bookForm.name)
-                              return await uploadWithIncrement(file, {
-                                entity: 'books',
-                                language: bookForm.language,
-                                baseName,
-                              })
-                            }}
-                            canUpload={() => {
-                              if (!bookForm.name.trim()) return { ok: false, message: 'Enter book name first.' }
-                              return { ok: true }
-                            }}
-                          />
-                      </div>
+                      <label className="text-md text-white/80">Picture</label>
+                      <ImageUploader
+                        value={bookForm.picture}
+                        resetKey={bookResetKey}
+                        onChange={(url) => setBF('picture', url)}
+                        onError={(msg) => setError(msg)}
+                        upload={async (file) => {
+                          const baseName = buildBookBase(bookForm.name)
+                          return await uploadWithIncrement(file, {
+                            entity: 'books',
+                            language: bookForm.language,
+                            baseName,
+                          })
+                        }}
+                        canUpload={() => {
+                          if (!bookForm.name.trim()) return { ok: false, message: 'Enter book name first.' }
+                          return { ok: true }
+                        }}
+                      />
+                    </div>
+
 
                     <button
                       type="submit"
@@ -571,180 +582,161 @@ export default function AdminCreateClient() {
                   </form>
                 ) : mode === 'word' ? (
                   <form onSubmit={submitWord} className="grid gap-10">
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-12 sm:gap-x-5">
-                    {/* Language */}
-                    <div className="grid gap-2 sm:col-span-2">
-                      <label className="text-md text-white/80">Language</label>
-                      <select
-                        value={wordForm.language}
-                        onChange={(e) => {
-                          setWF('language', e.target.value)
-                          setWF('book_id', '')
-                          setWF('topic_id', '')
-                          setWF('picture', '')
-                        }}
-                        className="w-full h-10 rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
-                      >
-                        <option value="DE">DE</option>
-                        <option value="PT">PT</option>
-                      </select>
-                    </div>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-12 sm:gap-x-5">
+                      {/* Language */}
+                      <div className="grid gap-2 sm:col-span-2">
+                        <label className="text-md text-white/80">Language</label>
+                        <Select
+                          value={wordForm.language}
+                          onChange={(v) => {
+                            setWF('language', v)
+                            setWF('book_id', '')
+                            setWF('topic_id', '')
+                            setWF('picture', '')
+                          }}
+                          options={languageOptions}
+                          placeholder='Language'
+                        />
+                      </div>
 
-                    {/* Book */}
-                    <div className="grid gap-2 sm:col-span-4">
-                      <label className="text-md text-white/80">Book</label>
-                      <select
-                        value={wordForm.book_id}
-                        onChange={(e) => setWF('book_id', e.target.value)}
-                        className={[
-                          "w-full rounded-2xl h-10 border border-white/15 bg-white/10 px-4 py-3 text-white outline-none",
-                          "focus:border-white/25 focus:ring-2 focus:ring-white/10",
-                          wordForm.book_id ? "text-white" : "text-white/40",
-                        ].join(" ")}
-                        required
-                      >
-                        <option value="" disabled>— choose —</option>
-                        {booksForSelectedLanguage.map((b) => (
-                          <option key={b.id} value={b.id}>
-                            {b.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
 
-                    {/* Topic */}
-                    <div className="grid gap-2 sm:col-span-4">
-                      <label className="text-md text-white/80">Topic</label>
-                      <select
-                        value={wordForm.topic_id}
-                        onChange={(e) => setWF('topic_id', e.target.value)}
-                        className={[
-                          "w-full rounded-2xl h-10 border border-white/15 bg-white/10 px-4 py-3 outline-none",
-                          "focus:border-white/25 focus:ring-2 focus:ring-white/10",
-                          wordForm.topic_id ? "text-white" : "text-white/40",
-                        ].join(" ")}
-                        required
-                      >
-                        <option value="" disabled>— choose —</option>
-                        {topicsForSelectedLanguage.map((t) => (
-                          <option key={t.id} value={t.id}>
-                            {t.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                      {/* Book */}
+                      <div className="grid gap-2 sm:col-span-4">
+                        <label className="text-md text-white/80">Book</label>
+                        <Select
+                          value={wordForm.book_id}
+                          onChange={(v) => setWF('book_id', v)}
+                          options={bookOptions}
+                          placeholder='- choose -'
+                        />
+                      </div>
 
-                    {/* Lesson */}
-                    <div className="grid gap-2 sm:col-span-2">
-                      <label className="text-md text-white/80">Lesson</label>
-                      <input
-                        value={wordForm.lesson}
-                        onChange={(e) => setWF('lesson', e.target.value)}
-                        type="number"
-                        min={1}
-                        className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
-                        required
-                      />
-                    </div>
-                  </div>
 
-                  {/* Word + Article grouped (mobile friendly) */}
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-12">
-                    {/* WORD card */}
-                    <div className="sm:col-span-6 rounded-2xl border border-white/10 bg-white/5 p-5">
-                      <p className="text-white font-semibold text-base leading-none">Word</p>
+                      {/* Topic */}
+                      <div className="grid gap-2 sm:col-span-4">
+                        <label className="text-md text-white/80">Topic</label>
+                        <Select
+                          value={wordForm.topic_id}
+                          onChange={(v) => setWF('topic_id', v)}
+                          options={topicOptions}
+                          placeholder='- choose -'
+                        />
+                      </div>
 
-                      <div className="mt-4 grid grid-cols-1 gap-6">
-                        <div className="grid gap-2">
-                          <label className="text-sm text-white/60">Singular</label>
-                          <input
-                            value={wordForm.word_singular}
-                            onChange={(e) => setWF('word_singular', e.target.value)}
-                            className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
-                            required
-                          />
-                        </div>
 
-                        <div className="grid gap-2">
-                          <label className="text-sm text-white/60">Plural</label>
-                          <input
-                            value={wordForm.word_plural}
-                            onChange={(e) => setWF('word_plural', e.target.value)}
-                            className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
-                          />
-                        </div>
+                      {/* Lesson */}
+                      <div className="grid gap-2 sm:col-span-2">
+                        <label className="text-md text-white/80">Lesson</label>
+                        <input
+                          value={wordForm.lesson}
+                          onChange={(e) => setWF('lesson', e.target.value)}
+                          type="number"
+                          min={1}
+                          className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
+                          required
+                        />
                       </div>
                     </div>
 
-                    {/* ARTICLE card */}
-                    <div className="sm:col-span-6 rounded-2xl border border-white/10 bg-white/5 p-5">
-                      <p className="text-white font-semibold text-base leading-none">Article</p>
+
+                    {/* Word + Article grouped (mobile friendly) */}
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-12">
+                      {/* WORD card */}
+                      <div className="sm:col-span-6 rounded-2xl border border-white/10 bg-white/5 p-5">
+                        <p className="text-white font-semibold text-base leading-none">Word</p>
 
 
-                      {(() => {
-                        const cfg = ARTICLES_BY_LANGUAGE[wordForm.language]
-
-                        return (
-                          <div className="mt-4 grid grid-cols-1 gap-6">
-                            {/* Singular */}
-                            <div className="grid gap-2">
-                              <label className="text-sm text-white/60">Singular</label>
-                              <ArticleChips
-                                value={wordForm.article_singular}
-                                options={cfg.singular}
-                                onChange={(v) => setWF('article_singular', v)}
-                              />
-                            </div>
-                            {/* Plural */}
-                            <div className="grid gap-2">
-                              <label className="text-sm text-white/60">Plural</label>
-                              <ArticleChips
-                                value={wordForm.article_plural}
-                                options={cfg.plural}
-                                onChange={(v) => setWF('article_plural', v)}
-                              />
-                            </div>
+                        <div className="mt-4 grid grid-cols-1 gap-6">
+                          <div className="grid gap-2">
+                            <label className="text-sm text-white/60">Singular</label>
+                            <input
+                              value={wordForm.word_singular}
+                              onChange={(e) => setWF('word_singular', e.target.value)}
+                              className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
+                              required
+                            />
                           </div>
-                        )
-                      })()}
+
+
+                          <div className="grid gap-2">
+                            <label className="text-sm text-white/60">Plural</label>
+                            <input
+                              value={wordForm.word_plural}
+                              onChange={(e) => setWF('word_plural', e.target.value)}
+                              className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+
+                      {/* ARTICLE card */}
+                      <div className="sm:col-span-6 rounded-2xl border border-white/10 bg-white/5 p-5">
+                        <p className="text-white font-semibold text-base leading-none">Article</p>
+
+
+                        {(() => {
+                          const cfg = ARTICLES_BY_LANGUAGE[wordForm.language]
+
+
+                          return (
+                            <div className="mt-4 grid grid-cols-1 gap-6">
+                              {/* Singular */}
+                              <div className="grid gap-2">
+                                <label className="text-sm text-white/60">Singular</label>
+                                <ArticleChips value={wordForm.article_singular} options={cfg.singular} onChange={(v) => setWF('article_singular', v)} />
+                              </div>
+                              {/* Plural */}
+                              <div className="grid gap-2">
+                                <label className="text-sm text-white/60">Plural</label>
+                                <ArticleChips value={wordForm.article_plural} options={cfg.plural} onChange={(v) => setWF('article_plural', v)} />
+                              </div>
+                            </div>
+                          )
+                        })()}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Translations grouped row */}
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-12 sm:items-start border border-white/10 bg-white/5 rounded-2xl p-5">
-                    <div className="sm:col-span-12">
-                      <p className="text-white font-semibold text-base leading-none">Translations</p>
 
-                      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-12 sm:gap-x-4">
-                        <div className="grid gap-2 sm:col-span-4">
-                          <label className="text-sm text-white/60">English</label>
-                          <input
-                            value={wordForm.translation_en}
-                            onChange={(e) => setWF('translation_en', e.target.value)}
-                            className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
-                          />
-                        </div>
+                    {/* Translations grouped row */}
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-12 sm:items-start border border-white/10 bg-white/5 rounded-2xl p-5">
+                      <div className="sm:col-span-12">
+                        <p className="text-white font-semibold text-base leading-none">Translations</p>
 
-                        <div className="grid gap-2 sm:col-span-4">
-                          <label className="text-sm text-white/60">Ukrainian</label>
-                          <input
-                            value={wordForm.translation_ukr}
-                            onChange={(e) => setWF('translation_ukr', e.target.value)}
-                            className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
-                          />
-                        </div>
 
-                        <div className="grid gap-2 sm:col-span-4">
-                          <label className="text-sm text-white/60">Russian</label>
-                          <input
-                            value={wordForm.translation_ru}
-                            onChange={(e) => setWF('translation_ru', e.target.value)}
-                            className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
-                          />
+                        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-12 sm:gap-x-4">
+                          <div className="grid gap-2 sm:col-span-4">
+                            <label className="text-sm text-white/60">English</label>
+                            <input
+                              value={wordForm.translation_en}
+                              onChange={(e) => setWF('translation_en', e.target.value)}
+                              className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
+                            />
+                          </div>
+
+
+                          <div className="grid gap-2 sm:col-span-4">
+                            <label className="text-sm text-white/60">Ukrainian</label>
+                            <input
+                              value={wordForm.translation_ukr}
+                              onChange={(e) => setWF('translation_ukr', e.target.value)}
+                              className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
+                            />
+                          </div>
+
+
+                          <div className="grid gap-2 sm:col-span-4">
+                            <label className="text-sm text-white/60">Russian</label>
+                            <input
+                              value={wordForm.translation_ru}
+                              onChange={(e) => setWF('translation_ru', e.target.value)}
+                              className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
+
 
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-6">
                       <div className="grid gap-2 sm:col-span-2">
@@ -755,14 +747,15 @@ export default function AdminCreateClient() {
                           onChange={(url) => setWF('picture', url)}
                           onError={(msg) => setError(msg)}
                           upload={async (file) => {
-                            const topicName =
-                              topics.find((t) => String(t.id) === String(wordForm.topic_id))?.name ?? '-'
+                            const topicName = topics.find((t) => String(t.id) === String(wordForm.topic_id))?.name ?? '-'
+
 
                             const baseName = buildWordBase({
                               lesson: wordForm.lesson,
                               topicName,
                               wordSingular: wordForm.word_singular,
                             })
+
 
                             return await uploadWithIncrement(file, {
                               entity: 'words',
@@ -786,23 +779,26 @@ export default function AdminCreateClient() {
                         />
                       </div>
 
+
                       <div className="grid gap-2 sm:col-span-4">
                         <label className="text-md text-white/80">Tasks (optional)</label>
+
 
                         <textarea
                           value={wordForm.tasks}
                           onChange={(e) => setWF('tasks', e.target.value)}
                           className={[
-                            "h-65 w-full resize-none",
-                            "rounded-2xl border border-white/15 bg-white/10 px-4 py-3",
-                            "text-white outline-none",
-                            "focus:border-white/25 focus:ring-2 focus:ring-white/10",
-                            "font-mono text-sm leading-5",
-                          ].join(" ")}
+                            'h-65 w-full resize-none',
+                            'rounded-2xl border border-white/15 bg-white/10 px-4 py-3',
+                            'text-white outline-none',
+                            'focus:border-white/25 focus:ring-2 focus:ring-white/10',
+                            'font-mono text-sm leading-5',
+                          ].join(' ')}
                           placeholder="[]"
                         />
                       </div>
                     </div>
+
 
                     <button
                       type="submit"
@@ -815,18 +811,11 @@ export default function AdminCreateClient() {
                 ) : (
                   <form onSubmit={submitTopic} className="grid gap-4">
                     <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-12 sm:gap-x-12">
-                      <div className="grid gap-2 sm:col-span-2">
+                      <div className="grid gap-2 sm:col-span-3">
                         <label className="text-md text-white/80">Language</label>
-                        <select
-                          value={topicForm.language}
-                          onChange={(e) => setTF('language', e.target.value)}
-                          className="w-full h-10 rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
-                          required
-                        >
-                          <option value="DE">DE</option>
-                          <option value="PT">PT</option>
-                        </select>
+                        <Select value={topicForm.language} onChange={(v) => setTF('language', v)} required options={languageOptions} placeholder="Language"/>
                       </div>
+
 
                       <div className="grid gap-2 sm:col-span-5">
                         <label className="text-md text-white/80">Topic name</label>
@@ -838,6 +827,7 @@ export default function AdminCreateClient() {
                         />
                       </div>
                     </div>
+
 
                     <button
                       type="submit"
@@ -851,6 +841,7 @@ export default function AdminCreateClient() {
             </div>
           </div>
         </div>
+
 
         <footer className="pb-6">
           <p className="text-center text-xs text-white/35">Lingui Academy</p>
