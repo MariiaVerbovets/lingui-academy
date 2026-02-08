@@ -1,11 +1,14 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { getIsAdmin } from '@/lib/isAdmin'
 
+
 type Language = 'DE' | 'PT'
+
 
 type Book = {
   id: number
@@ -14,6 +17,7 @@ type Book = {
   picture?: string | null
 }
 
+
 export default function GermanPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
@@ -21,8 +25,45 @@ export default function GermanPage() {
   const [error, setError] = useState<string | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
 
+
+  // horizontal scroller
+  const scrollerRef = useRef<HTMLDivElement | null>(null)
+
+
+  const scrollByCards = (dir: 1 | -1) => {
+    const el = scrollerRef.current
+    if (!el) return
+    const amount = Math.round(el.clientWidth * 0.4)
+    el.scrollBy({ left: amount * dir, behavior: 'smooth' })
+  }
+
+
+  // wheel -> horizontal scroll (PC mouse)
+  useEffect(() => {
+    const el = scrollerRef.current
+    if (!el) return
+
+
+    const onWheel = (e: WheelEvent) => {
+      // if trackpad already sends horizontal, don't interfere
+      if (Math.abs(e.deltaX) > 0) return
+
+
+      if (Math.abs(e.deltaY) > 0) {
+        e.preventDefault()
+        el.scrollLeft += e.deltaY
+      }
+    }
+
+
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
+
+
   useEffect(() => {
     setLoading(true)
+
 
     const run = async () => {
       const { data } = await supabase.auth.getSession()
@@ -31,17 +72,21 @@ export default function GermanPage() {
         return
       }
 
+
       try {
         setError(null)
 
+
         const admin = await getIsAdmin()
         setIsAdmin(admin)
+
 
         const { data: b, error: e } = await supabase
           .from('books')
           .select('id,name,language,picture')
           .eq('language', 'DE')
           .order('name', { ascending: true })
+
 
         if (e) throw e
         setBooks((b ?? []) as Book[])
@@ -54,10 +99,13 @@ export default function GermanPage() {
       }
     }
 
+
     run()
   }, [router])
 
+
   const hasBooks = useMemo(() => books.length > 0, [books])
+
 
   if (loading) {
     return (
@@ -67,6 +115,7 @@ export default function GermanPage() {
     )
   }
 
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 px-4">
       {isAdmin && (
@@ -74,9 +123,9 @@ export default function GermanPage() {
           <button
             onClick={() => router.push('/admin?from=' + encodeURIComponent('/languages/german'))}
             className={[
-              "group relative h-10 w-10 rounded-xl border border-white/15 bg-white/5",
-              "transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/20",
-            ].join(" ")}
+              'group relative h-10 w-10 rounded-xl border border-white/15 bg-white/5',
+              'transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/20',
+            ].join(' ')}
             aria-label="Admin"
             type="button"
           >
@@ -84,27 +133,30 @@ export default function GermanPage() {
             <div
               className="h-full w-full transition-transform duration-200 ease-out group-hover:rotate-12"
               style={{
-                WebkitMask: "url(/admin.svg) center / 60% no-repeat",
-                mask: "url(/admin.svg) center / 60% no-repeat",
-                backgroundColor: "rgba(255,255,255,0.85)",
+                WebkitMask: 'url(/admin.svg) center / 60% no-repeat',
+                mask: 'url(/admin.svg) center / 60% no-repeat',
+                backgroundColor: 'rgba(255,255,255,0.85)',
               }}
             />
+
 
             {/* tooltip */}
             <span
               className={[
-                "pointer-events-none absolute left-1/2 top-full mt-2 -translate-x-1/2",
-                "whitespace-nowrap rounded-lg border border-white/10 bg-black/50 px-2 py-1",
-                "text-xs text-white/85 shadow-lg backdrop-blur",
-                "opacity-0 translate-y-1 transition duration-150",
-                "group-hover:opacity-100 group-hover:translate-y-0",
-              ].join(" ")}
+                'pointer-events-none absolute left-1/2 top-full mt-2 -translate-x-1/2',
+                'whitespace-nowrap rounded-lg border border-white/10 bg-black/50 px-2 py-1',
+                'text-xs text-white/85 shadow-lg backdrop-blur',
+                'opacity-0 translate-y-1 transition duration-150',
+                'group-hover:opacity-100 group-hover:translate-y-0',
+              ].join(' ')}
             >
               Admin
             </span>
           </button>
         </div>
       )}
+
+
       {/* Back button OUTSIDE card */}
       <button
         type="button"
@@ -120,6 +172,7 @@ export default function GermanPage() {
         Back
       </button>
 
+
       {/* Soft background blobs */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -top-28 left-1/2 h-[460px] w-[460px] -translate-x-1/2 rounded-full bg-fuchsia-500/20 blur-3xl" />
@@ -127,6 +180,7 @@ export default function GermanPage() {
         <div className="absolute bottom-0 -right-24 h-[460px] w-[460px] rounded-full bg-emerald-400/15 blur-3xl" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.10),transparent_55%)]" />
       </div>
+
 
       <div className="relative min-h-screen flex flex-col">
         <div className="flex flex-1 items-center justify-center py-10 sm:py-16">
@@ -145,11 +199,13 @@ export default function GermanPage() {
                 </div>
               </div>
 
+
               {error && (
                 <div className="mt-6 rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-md text-red-200">
                   {error}
                 </div>
               )}
+
 
               {!error && !hasBooks && (
                 <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4 text-md text-white/60">
@@ -157,60 +213,108 @@ export default function GermanPage() {
                 </div>
               )}
 
-              {/* Books grid - RECTANGULAR cards */}
-              <div className="mt-6 overflow-x-auto scroll-smooth scrollbar-hide">
-                <div className="flex gap-16 p-5 rounded-2xl">
+
+              {/* Books row with arrows + wheel horizontal scroll */}
+              <div className="mt-6 relative md:px-18">
+                {/* left arrow (PC) */}
+                <button
+                  type="button"
+                  onClick={() => scrollByCards(-1)}
+                  className={[
+                    'hidden md:flex',
+                    'absolute left-1 top-1/2 -translate-y-12 z-20',
+                    'h-10 w-10 items-center justify-center rounded-full',
+                    'border border-white/15 bg-black/30 text-white/80',
+                    'backdrop-blur transition hover:bg-black/40 hover:text-white',
+                    'focus:outline-none focus:ring-2 focus:ring-white/20',
+                  ].join(' ')}
+                  aria-label="Scroll left"
+                  title="Scroll left"
+                >
+                  ←
+                </button>
+
+
+                {/* right arrow (PC) */}
+                <button
+                  type="button"
+                  onClick={() => scrollByCards(1)}
+                  className={[
+                    'hidden md:flex',
+                    'absolute right-1 top-1/2 -translate-y-12 z-20',
+                    'h-10 w-10 items-center justify-center rounded-full',
+                    'border border-white/15 bg-black/30 text-white/80',
+                    'backdrop-blur transition hover:bg-black/40 hover:text-white',
+                    'focus:outline-none focus:ring-2 focus:ring-white/20',
+                  ].join(' ')}
+                  aria-label="Scroll right"
+                  title="Scroll right"
+                >
+                  →
+                </button>
+
+
+                <div
+                  ref={scrollerRef}
+                  className="overflow-x-auto scroll-smooth scrollbar-hide"
+                >
+                  <div className="flex gap-10 p-5 rounded-2xl">
                     {books.map((b) => (
-                    <div
+                      <div
                         key={b.id}
                         className={[
-                          "group w-44 shrink-0 flex flex-col items-center",
-                          "transform-gpu transition-transform duration-300 ease-out",
-                          "sm:hover:scale-[1.06]",
-                        ].join(" ")}
-                    >
+                          'group w-44 shrink-0 flex flex-col items-center',
+                          'transform-gpu transition-transform duration-300 ease-out',
+                          'sm:hover:scale-[1.06]',
+                        ].join(' ')}
+                      >
                         <button
-                        type="button"
-                        className={[
-                          "relative isolate overflow-hidden rounded-sm",
-                          "border border-white/20 bg-white/12",
-                          "aspect-[2/3] w-full",
-                          "shadow-[0_12px_34px_-18px_rgba(0,0,0,0.6)]",
-                          "transition-all duration-300 ease-out",
-                          "sm:group-hover:border-white/30 sm:group-hover:bg-white/18",
-                          "sm:group-hover:shadow-[0_18px_45px_-25px_rgba(255,255,255,0.35)]",
-                          "focus:outline-none focus:ring-2 focus:ring-white/15",
-                        ].join(" ")}
-                        onClick={() => {
-                          router.push(`/train/setup?bookId=${String(b.id)}&lang=german`)
-                        }}
+                          type="button"
+                          className={[
+                            'relative isolate overflow-hidden rounded-sm',
+                            'border border-white/20 bg-white/12',
+                            'aspect-[2/3] w-full',
+                            'shadow-[0_12px_34px_-18px_rgba(0,0,0,0.6)]',
+                            'transition-all duration-300 ease-out',
+                            'sm:group-hover:border-white/30 sm:group-hover:bg-white/18',
+                            'sm:group-hover:shadow-[0_18px_45px_-25px_rgba(255,255,255,0.35)]',
+                            'focus:outline-none focus:ring-2 focus:ring-white/15',
+                          ].join(' ')}
+                          onClick={() => {
+                            router.push(`/train/setup?bookId=${String(b.id)}&lang=german`)
+                          }}
                         >
-                        <div className="absolute inset-0">
+                          <div className="absolute inset-0">
                             <img
-                            src={b.picture ?? ""}
-                            alt={b.name}
-                            className="h-full w-full object-cover"
-                            loading="lazy"
-                            draggable={false}
+                              src={b.picture ?? ''}
+                              alt={b.name}
+                              className="h-full w-full object-cover"
+                              loading="lazy"
+                              draggable={false}
                             />
                             <div className="absolute inset-0 bg-black/10 transition-opacity duration-300 sm:group-hover:opacity-5" />
-                        </div>
+                          </div>
                         </button>
+
+
                         <p
-                        className={[
-                            "min-h-[40px] mt-3 text-md font-semibold text-white/80 text-center leading-tight",
-                            "transition-colors duration-300 group-hover:text-white",
-                        ].join(" ")}
+                          className={[
+                            'min-h-[40px] mt-3 text-md font-semibold text-white/80 text-center leading-tight',
+                            'transition-colors duration-300 group-hover:text-white',
+                          ].join(' ')}
                         >
-                        {b.name}
+                          {b.name}
                         </p>
-                    </div>
+                      </div>
                     ))}
+                  </div>
                 </div>
               </div>
+              {/* /Books row */}
             </div>
           </div>
         </div>
+
 
         <footer className="pb-6">
           <p className="text-center text-xs text-white/35">Lingui Academy</p>
