@@ -26,6 +26,24 @@ type Topic = {
 
 type Mode = 'word' | 'book' | 'topic'
 
+type ArticleConfig = {
+  singular: string[]
+  plural: string[]
+  pluralAuto?: string
+}
+
+const ARTICLES_BY_LANGUAGE: Record<Language, ArticleConfig> = {
+  DE: {
+    singular: ['der', 'die', 'das'],
+    plural: ['die'],
+    pluralAuto: 'die',
+  },
+  PT: {
+    singular: ['o', 'a'],
+    plural: ['os', 'as'],
+  },
+}
+
 const MODE_ITEMS = [
   { key: 'book' as const, label: '📚 Book' },
   { key: 'word' as const, label: '📝 Word' },
@@ -89,6 +107,28 @@ export default function AdminCreateClient() {
 
   const [bookResetKey, setBookResetKey] = useState(0)
   const [wordResetKey, setWordResetKey] = useState(0)
+
+  useEffect(() => {
+    const cfg = ARTICLES_BY_LANGUAGE[wordForm.language]
+    if (!cfg) return
+
+    if (cfg.pluralAuto) {
+      setWordForm((p) => ({
+        ...p,
+        article_plural: cfg.pluralAuto ?? '',
+      }))
+    } else {
+      setWordForm((p) => {
+        const isValid = cfg.plural.includes((p.article_plural ?? '').trim())
+        return isValid ? p : { ...p, article_plural: '' }
+      })
+    }
+
+    setWordForm((p) => {
+      const isValid = cfg.singular.includes((p.article_singular ?? '').trim())
+      return isValid ? p : { ...p, article_singular: '' }
+    })
+  }, [wordForm.language])
 
   useEffect(() => {
     if (!ok) return
@@ -337,6 +377,43 @@ export default function AdminCreateClient() {
     )
   }
 
+  const ArticleChips = ({
+    value,
+    options,
+    onChange,
+    disabled = false,
+  }: {
+    value: string
+    options: string[]
+    onChange: (v: string) => void
+    disabled?: boolean
+  }) => {
+    return (
+      <div className="flex flex-wrap gap-4">
+        {options.map((opt) => {
+          const selected = (value ?? '').trim().toLowerCase() === opt.toLowerCase()
+          return (
+            <button
+              key={opt}
+              type="button"
+              disabled={disabled}
+              onClick={() => onChange(opt)}
+              className={[
+                'rounded-2xl px-6 py-3 text-sm font-semibold border transition',
+                selected
+                  ? 'bg-white text-slate-950 border-white/10 shadow-lg shadow-white/10'
+                  : 'bg-white/10 text-white/90 border-white/10 hover:bg-white/15',
+                disabled ? 'opacity-70 cursor-not-allowed' : '',
+              ].join(' ')}
+            >
+              {opt}
+            </button>
+          )
+        })}
+      </div>
+    )
+  }
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 px-4">
       {/* Back button */}
@@ -579,7 +656,7 @@ export default function AdminCreateClient() {
                     <div className="sm:col-span-6 rounded-2xl border border-white/10 bg-white/5 p-5">
                       <p className="text-white font-semibold text-base leading-none">Word</p>
 
-                      <div className="mt-4 grid grid-cols-1 gap-4">
+                      <div className="mt-4 grid grid-cols-1 gap-6">
                         <div className="grid gap-2">
                           <label className="text-sm text-white/60">Singular</label>
                           <input
@@ -605,25 +682,33 @@ export default function AdminCreateClient() {
                     <div className="sm:col-span-6 rounded-2xl border border-white/10 bg-white/5 p-5">
                       <p className="text-white font-semibold text-base leading-none">Article</p>
 
-                      <div className="mt-4 grid grid-cols-1 gap-4">
-                        <div className="grid gap-2">
-                          <label className="text-sm text-white/60">Singular</label>
-                          <input
-                            value={wordForm.article_singular}
-                            onChange={(e) => setWF('article_singular', e.target.value)}
-                            className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
-                          />
-                        </div>
 
-                        <div className="grid gap-2">
-                          <label className="text-sm text-white/60">Plural</label>
-                          <input
-                            value={wordForm.article_plural}
-                            onChange={(e) => setWF('article_plural', e.target.value)}
-                            className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
-                          />
-                        </div>
-                      </div>
+                      {(() => {
+                        const cfg = ARTICLES_BY_LANGUAGE[wordForm.language]
+
+                        return (
+                          <div className="mt-4 grid grid-cols-1 gap-6">
+                            {/* Singular */}
+                            <div className="grid gap-2">
+                              <label className="text-sm text-white/60">Singular</label>
+                              <ArticleChips
+                                value={wordForm.article_singular}
+                                options={cfg.singular}
+                                onChange={(v) => setWF('article_singular', v)}
+                              />
+                            </div>
+                            {/* Plural */}
+                            <div className="grid gap-2">
+                              <label className="text-sm text-white/60">Plural</label>
+                              <ArticleChips
+                                value={wordForm.article_plural}
+                                options={cfg.plural}
+                                onChange={(v) => setWF('article_plural', v)}
+                              />
+                            </div>
+                          </div>
+                        )
+                      })()}
                     </div>
                   </div>
 
@@ -634,10 +719,10 @@ export default function AdminCreateClient() {
 
                       <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-12 sm:gap-x-4">
                         <div className="grid gap-2 sm:col-span-4">
-                          <label className="text-sm text-white/60">Russian</label>
+                          <label className="text-sm text-white/60">English</label>
                           <input
-                            value={wordForm.translation_ru}
-                            onChange={(e) => setWF('translation_ru', e.target.value)}
+                            value={wordForm.translation_en}
+                            onChange={(e) => setWF('translation_en', e.target.value)}
                             className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
                           />
                         </div>
@@ -652,10 +737,10 @@ export default function AdminCreateClient() {
                         </div>
 
                         <div className="grid gap-2 sm:col-span-4">
-                          <label className="text-sm text-white/60">English</label>
+                          <label className="text-sm text-white/60">Russian</label>
                           <input
-                            value={wordForm.translation_en}
-                            onChange={(e) => setWF('translation_en', e.target.value)}
+                            value={wordForm.translation_ru}
+                            onChange={(e) => setWF('translation_ru', e.target.value)}
                             className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
                           />
                         </div>

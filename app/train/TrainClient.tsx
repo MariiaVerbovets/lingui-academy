@@ -85,12 +85,6 @@ function formatCardsWord(w: WordRow) {
   return `${s}, ${p}`
 }
 
-function formatExpectedSingle(w: WordRow) {
-  const a = (w.article_singular ?? '').trim()
-  const s = w.word_singular.trim()
-  return a ? `${a} ${s}` : s
-}
-
 function isDash(v: string | null | undefined) {
   return (v ?? '').trim() === '-'
 }
