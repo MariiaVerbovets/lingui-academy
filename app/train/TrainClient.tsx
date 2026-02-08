@@ -575,7 +575,7 @@ export default function TrainCardsReview() {
             </p>
 
             {resetError && (
-              <div className="mt-4 rounded-2xl border border-red-400/20 bg-red-500/10 p-3 text-sm text-red-200">
+              <div className="mt-4 rounded-2xl border border-red-400/20 bg-red-500/10 p-3 text-md text-red-200">
                 {resetError}
               </div>
             )}
@@ -631,7 +631,7 @@ export default function TrainCardsReview() {
             </div>
 
             {resetError && (
-              <div className="mt-4 rounded-2xl border border-red-400/20 bg-red-500/10 p-3 text-sm text-red-200">
+              <div className="mt-4 rounded-2xl border border-red-400/20 bg-red-500/10 p-3 text-md text-red-200">
                 {resetError}
               </div>
             )}
@@ -671,7 +671,7 @@ export default function TrainCardsReview() {
         <section className="flex-1 flex items-start justify-center pb-10">
           <div className="w-full max-w-md rounded-3xl border border-white/10 bg-white/5 p-6 sm:p-8 backdrop-blur-xl shadow-[0_20px_60px_-20px_rgba(0,0,0,0.6)]">
             {error && (
-              <div className="mb-5 inline-flex rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-200">
+              <div className="mb-5 inline-flex rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-md text-red-200">
                 {error}
               </div>
             )}
@@ -818,7 +818,7 @@ export default function TrainCardsReview() {
                             const isWrongSel = answered && isSel && !isCorrect
 
                             const cls = [
-                                'rounded-2xl px-4 py-3 text-sm font-semibold transition border',
+                                'rounded-2xl px-4 py-3 text-md font-semibold transition border',
                                 isCorrect
                                 ? 'bg-emerald-500/15 text-emerald-100 border-emerald-400/30'
                                 : isWrongSel
@@ -850,7 +850,7 @@ export default function TrainCardsReview() {
                         const showCorrect = answered && opt.isCorrect
                         const showWrong = answered && isSelected && !opt.isCorrect
 
-                        const base = 'w-full rounded-2xl px-4 py-3 text-sm font-semibold transition border'
+                        const base = 'w-full rounded-2xl px-4 py-3 text-md font-semibold transition border'
                         const normal = 'bg-white/10 text-white/90 border-white/10 hover:bg-white/15'
                         const correct = 'bg-emerald-500/15 text-emerald-100 border-emerald-400/30'
                         const wrong = 'bg-red-500/15 text-red-100 border-red-400/30'
@@ -902,7 +902,7 @@ export default function TrainCardsReview() {
                         }}
                         disabled={writingChecked}
                         className={[
-                          'flex-1 rounded-2xl px-4 py-3 text-sm font-semibold outline-none border transition',
+                          'flex-1 rounded-2xl px-4 py-3 text-md font-semibold outline-none border transition',
                           'placeholder:text-white/40',
                           writingChecked
                             ? writingWasCorrect
@@ -917,7 +917,7 @@ export default function TrainCardsReview() {
                         onClick={submitWriting}
                         disabled={writingChecked || !writingValue.trim()}
                         className={[
-                          'rounded-2xl px-4 py-3 text-sm font-semibold border transition',
+                          'rounded-2xl px-4 py-3 text-md font-semibold border transition',
                           writingChecked || !writingValue.trim()
                             ? 'bg-white/5 text-white/35 border-white/10 opacity-70'
                             : 'bg-white text-slate-950 border-white/10 hover:-translate-y-[1px] hover:shadow-lg hover:shadow-white/10',
@@ -928,7 +928,7 @@ export default function TrainCardsReview() {
                     </div>
 
                     {writingChecked && writingWasCorrect === false && (
-                      <div className="mt-3 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 text-emerald-100 p-3 text-sm">
+                      <div className="mt-3 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 text-emerald-100 p-3 text-md">
                         {formatExpectedWriting(current)}
                       </div>
                     )}

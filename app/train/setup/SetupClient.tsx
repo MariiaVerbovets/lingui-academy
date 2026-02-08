@@ -190,7 +190,7 @@ export default function SetupClient({ bookId }: { bookId: string }) {
         className={[
           'absolute left-6 top-6 z-30',
           'inline-flex items-center gap-2',
-          'text-sm text-white/70 hover:text-white',
+          'text-md text-white/70 hover:text-white',
           'transition',
         ].join(' ')}
       >
@@ -224,13 +224,13 @@ export default function SetupClient({ bookId }: { bookId: string }) {
               </div>
 
               {error && (
-                <div className="mt-6 inline-flex rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-200">
+                <div className="mt-6 inline-flex rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-md text-red-200">
                   {error}
                 </div>
               )}
 
               {!error && rows.length === 0 && (
-                <div className="mt-6 inline-flex rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/60">
+                <div className="mt-6 inline-flex rounded-2xl border border-white/10 bg-white/5 p-4 text-md text-white/60">
                   No words found for this book.
                 </div>
               )}
@@ -241,7 +241,7 @@ export default function SetupClient({ bookId }: { bookId: string }) {
                   <select
                     value={selectedLesson ?? ''}
                     onChange={(e) => setSelectedLesson(e.target.value ? Number(e.target.value) : null)}
-                    className="w-full rounded-2xl h-8 border border-white/15 px-4 py-3 bg-white/10 text-white/80 outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10 text-sm font-semibold"
+                    className="w-full rounded-2xl h-10 border border-white/15 px-4 py-3 bg-white/10 text-white/80 outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10 text-sm font-semibold"
                   >                          
                     <option value="" disabled className="text-slate-950">
                       Select lesson…
@@ -259,7 +259,7 @@ export default function SetupClient({ bookId }: { bookId: string }) {
               </div>
 
               {/* Modes */}
-              <div className="mt-6 space-y-2">
+              <div className="mt-12 space-y-2">
                 <div className="text-md font-medium text-white/80">Training mode</div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -309,7 +309,7 @@ export default function SetupClient({ bookId }: { bookId: string }) {
                 type="button"
                 onClick={start}
                 disabled={!canStart}
-                className="mt-8 w-full rounded-2xl bg-white px-4 py-3.5 text-base font-semibold text-slate-950 shadow-lg shadow-white/10 transition hover:-translate-y-[1px] hover:shadow-xl active:translate-y-0 disabled:opacity-60"
+                className="mt-12 w-full rounded-2xl bg-white px-4 py-3.5 text-base font-semibold text-slate-950 shadow-lg shadow-white/10 transition hover:-translate-y-[1px] hover:shadow-xl active:translate-y-0 disabled:opacity-60"
               >
                 Start
               </button>

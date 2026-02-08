@@ -112,7 +112,7 @@ export default function GermanPage() {
         className={[
           'absolute left-6 top-6 z-30',
           'inline-flex items-center gap-2',
-          'text-sm text-white/70 hover:text-white',
+          'text-md text-white/70 hover:text-white',
           'transition',
         ].join(' ')}
       >
@@ -146,13 +146,13 @@ export default function GermanPage() {
               </div>
 
               {error && (
-                <div className="mt-6 rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-200">
+                <div className="mt-6 rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-md text-red-200">
                   {error}
                 </div>
               )}
 
               {!error && !hasBooks && (
-                <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/60">
+                <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4 text-md text-white/60">
                   No German books yet.
                 </div>
               )}
@@ -198,7 +198,7 @@ export default function GermanPage() {
                         </button>
                         <p
                         className={[
-                            "min-h-[40px] mt-3 text-sm font-semibold text-white/80 text-center leading-tight",
+                            "min-h-[40px] mt-3 text-md font-semibold text-white/80 text-center leading-tight",
                             "transition-colors duration-300 group-hover:text-white",
                         ].join(" ")}
                         >

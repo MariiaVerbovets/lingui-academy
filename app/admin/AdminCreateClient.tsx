@@ -346,7 +346,7 @@ export default function AdminCreateClient() {
         className={[
           'absolute left-6 z-30',
           'inline-flex items-center gap-2',
-          'text-sm text-white/70 hover:text-white',
+          'text-md text-white/70 hover:text-white',
           'transition',
         ].join(' ')}
         style={{ top: 'calc(env(safe-area-inset-top) + 1rem)' }}

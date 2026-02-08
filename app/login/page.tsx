@@ -77,7 +77,7 @@ export default function LoginPage() {
               </div>
 
               <form onSubmit={sendMagicLink} className="mt-7 space-y-4">
-                <label className="block text-sm font-medium text-white/80">
+                <label className="block text-md font-medium text-white/80">
                   Email
                 </label>
 
@@ -106,7 +106,7 @@ export default function LoginPage() {
 
               {message && (
                 <div
-                  className={`mt-5 rounded-2xl border p-4 text-sm ${
+                  className={`mt-5 rounded-2xl border p-4 text-md ${
                     isError
                       ? "border-red-400/20 bg-red-500/10 text-red-200"
                       : "border-emerald-400/20 bg-emerald-500/10 text-emerald-200"
