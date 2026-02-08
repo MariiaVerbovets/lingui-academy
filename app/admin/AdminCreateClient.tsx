@@ -29,14 +29,12 @@ type Mode = 'word' | 'book' | 'topic'
 type ArticleConfig = {
   singular: string[]
   plural: string[]
-  pluralAuto?: string
 }
 
 const ARTICLES_BY_LANGUAGE: Record<Language, ArticleConfig> = {
   DE: {
     singular: ['der', 'die', 'das'],
     plural: ['die'],
-    pluralAuto: 'die',
   },
   PT: {
     singular: ['o', 'a'],
@@ -112,21 +110,17 @@ export default function AdminCreateClient() {
     const cfg = ARTICLES_BY_LANGUAGE[wordForm.language]
     if (!cfg) return
 
-    if (cfg.pluralAuto) {
-      setWordForm((p) => ({
-        ...p,
-        article_plural: cfg.pluralAuto ?? '',
-      }))
-    } else {
-      setWordForm((p) => {
-        const isValid = cfg.plural.includes((p.article_plural ?? '').trim())
-        return isValid ? p : { ...p, article_plural: '' }
-      })
-    }
-
     setWordForm((p) => {
-      const isValid = cfg.singular.includes((p.article_singular ?? '').trim())
-      return isValid ? p : { ...p, article_singular: '' }
+      const sing = (p.article_singular ?? '').trim()
+      const pl = (p.article_plural ?? '').trim()
+
+      const singOk = !sing || cfg.singular.includes(sing)
+      const plOk = !pl || cfg.plural.includes(pl)
+      return {
+          ...p,
+          article_singular: singOk ? p.article_singular : '' ,
+          article_plural: plOk ? p.article_plural : ''
+      }
     })
   }, [wordForm.language])
 
@@ -326,12 +320,16 @@ export default function AdminCreateClient() {
       return
     }
 
+    const cfg = ARTICLES_BY_LANGUAGE[wordForm.language]
+    const sing = wordForm.article_singular.trim()
+    const pl = wordForm.article_plural.trim()
+
     const payload = {
       language: wordForm.language,
       word_singular: wordForm.word_singular.trim(),
       word_plural: wordForm.word_plural.trim() || null,
-      article_singular: wordForm.article_singular.trim() || null,
-      article_plural: wordForm.article_plural.trim() || null,
+      article_singular: sing && cfg.singular.includes(sing) ? sing : null,
+      article_plural: pl && cfg.plural.includes(pl) ? pl : null,
       translation_ru: wordForm.translation_ru.trim() || null,
       translation_ukr: wordForm.translation_ukr.trim() || null,
       translation_en: wordForm.translation_en.trim() || null,
@@ -397,7 +395,7 @@ export default function AdminCreateClient() {
               key={opt}
               type="button"
               disabled={disabled}
-              onClick={() => onChange(opt)}
+              onClick={() => onChange(selected ? '' : opt)}
               className={[
                 'rounded-2xl px-6 py-3 text-sm font-semibold border transition',
                 selected
