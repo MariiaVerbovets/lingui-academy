@@ -3,8 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
+import { get } from 'http'
 
 type TrainMode = 'cards' | 'single' | 'writing'
+type NativeLanguage = 'en' | 'uk' | 'ru'
 
 type WordRow = {
   id: number
@@ -93,6 +95,14 @@ function isDash(v: string | null | undefined) {
   return (v ?? '').trim() === '-'
 }
 
+function getTranslationByNativeLang(w: WordRow, nl: NativeLanguage | null) {
+  if (!w) return null
+  if (nl === 'ru') return w.translation_ru?.trim() || null
+  if (nl === 'uk') return w.translation_ukr?.trim() || null
+  if (nl === 'en') return w.translation_en?.trim() || null
+  return null
+}
+
 export default function TrainCardsReview() {
   const router = useRouter()
   const sp = useSearchParams()
@@ -109,6 +119,47 @@ export default function TrainCardsReview() {
 
   const [words, setWords] = useState<WordRow[]>([])
   const [index, setIndex] = useState(0)
+
+  const [nativeLang, setNativeLang] = useState<NativeLanguage | null>(null)
+  const [nativeLangLoading, setNativeLangLoading] = useState(true)
+
+  useEffect(() => {
+    const loadNativeLang = async () => {
+      setNativeLangLoading(true)
+      try {
+        const { data: sessionData } = await supabase.auth.getSession()
+        const user = sessionData.session?.user
+        if (!user) {
+          router.replace('/login')
+          return
+        }
+
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('native_language')
+          .eq('id', user.id)
+          .maybeSingle()
+
+        if (error) throw error
+
+        const nl = (data?.native_language ?? null) as NativeLanguage | null
+
+        if (!nl) {
+          router.replace('/languages')
+          return
+        }
+
+        setNativeLang(nl)
+      } catch (e: any) {
+        console.warn('Failed to load native language', e)
+        router.replace('/languages')
+      } finally {
+        setNativeLangLoading(false)
+      }
+    }
+
+    loadNativeLang()
+  }, [router])
 
   // cards-only UI
   const [isFlipped, setIsFlipped] = useState(false)
@@ -160,12 +211,7 @@ export default function TrainCardsReview() {
   // ===== main training UI =====
   const headerTitle = mode === 'cards' ? 'Cards review' : mode === 'single' ? 'Single choice' : 'Writing'
   const needsArticle = !!current?.article_singular?.trim()
-  const promptText =
-    current?.translation_ukr?.trim()
-      ? current.translation_ukr
-      : current?.translation_en?.trim()
-        ? current.translation_en
-        : 'No translation'
+  const promptText = current ? (getTranslationByNativeLang(current, nativeLang) ?? 'No translation') : 'No translation'
 
   const Bg = () => (
     <div className="pointer-events-none absolute inset-0">
@@ -552,7 +598,7 @@ export default function TrainCardsReview() {
   }
 
   // ===== RENDER =====
-  if (loading) {
+  if (loading || nativeLangLoading) {
     return (
       <main className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 px-4">
         <p className="pt-10 text-center text-white/60">Loading…</p>
@@ -725,29 +771,19 @@ export default function TrainCardsReview() {
                           <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)]">
                             <div className="h-full w-full rounded-2xl border border-white/10 bg-white/10 backdrop-blur-xl p-5 flex flex-col justify-center">
                               <div className="text-center">
-                                <div className="text-lg font-semibold text-white">{formatCardsWord(current)}</div>
+                                <div className="text-xl font-semibold text-white">{formatCardsWord(current)}</div>
+                                  <div className="mt-4 text-xl text-white font-medium">
+                                    {(() => {
+                                      const t = current ? getTranslationByNativeLang(current, nativeLang) : null
+                                      if (!t) return <div className="text-white/40">No translation.</div>
 
-                                <div className="mt-4 space-y-2 text-md text-white/80">
-                                  {current.translation_en && (
-                                    <div>
-                                      <span className="text-white/45">EN:</span> {current.translation_en}
-                                    </div>
-                                  )}
-                                  {current.translation_ukr && (
-                                    <div>
-                                      <span className="text-white/45">UA:</span> {current.translation_ukr}
-                                    </div>
-                                  )}
-                                  {current.translation_ru && (
-                                    <div>
-                                      <span className="text-white/45">RU:</span> {current.translation_ru}
-                                    </div>
-                                  )}
-
-                                  {!current.translation_en && !current.translation_ru && !current.translation_ukr && (
-                                    <div className="text-white/40">No translations.</div>
-                                  )}
-                                </div>
+                                      return (
+                                        <div>
+                                          <span>{t}</span>
+                                        </div>
+                                      )
+                                    })()}
+                                  </div>
                               </div>
                             </div>
                           </div>
@@ -917,7 +953,7 @@ export default function TrainCardsReview() {
                         onClick={submitWriting}
                         disabled={writingChecked || !writingValue.trim()}
                         className={[
-                          'rounded-2xl px-4 py-3 text-md font-semibold border transition',
+                          'rounded-2xl px-4 py-3 text-sm font-semibold border transition',
                           writingChecked || !writingValue.trim()
                             ? 'bg-white/5 text-white/35 border-white/10 opacity-70'
                             : 'bg-white text-slate-950 border-white/10 hover:-translate-y-[1px] hover:shadow-lg hover:shadow-white/10',
