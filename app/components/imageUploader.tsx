@@ -225,7 +225,7 @@ export function ImageUploader({
                backgroundColor: 'rgba(255,255,255,0.2)',
              }}
            />
-           <p className="pointer-events-none mt-2 text-xs text-white/45">Click or drag &amp; drop</p>
+           <p className="pointer-events-none mt-2 text-sm text-white/45">Click or drag &amp; drop</p>
          </div>
        )}
      </label>

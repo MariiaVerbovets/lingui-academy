@@ -174,11 +174,20 @@ export default function AdminCreateClient() {
   const setWF = (k: string, v: string) => setWordForm((p) => ({ ...p, [k]: v }))
   const setBF = (k: string, v: string) => setBookForm((p) => ({ ...p, [k]: v }))
 
+  const scrollToTop = () => {
+    if (typeof window === 'undefined') return
+
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    })
+  }
+
   // ---------- Save book ----------
   const submitBook = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     setOk(null)
+    scrollToTop()
 
     if (!bookForm.name.trim()) {
       setError('Book name is required.')
@@ -218,6 +227,7 @@ export default function AdminCreateClient() {
     e.preventDefault()
     setError(null)
     setOk(null)
+    scrollToTop()
 
     if (!topicForm.name.trim()) {
       setError('Topic name is required.')
@@ -251,6 +261,7 @@ export default function AdminCreateClient() {
     e.preventDefault()
     setError(null)
     setOk(null)
+    scrollToTop()
 
     if (!wordForm.book_id) {
       setError('Please select a book.')
@@ -333,7 +344,7 @@ export default function AdminCreateClient() {
         type="button"
         onClick={goBack}
         className={[
-          'fixed left-6 z-30',
+          'absolute left-6 z-30',
           'inline-flex items-center gap-2',
           'text-sm text-white/70 hover:text-white',
           'transition',
@@ -353,7 +364,7 @@ export default function AdminCreateClient() {
       </div>
 
       <div className="relative min-h-screen flex flex-col">
-        <div className="flex flex-1 items-center justify-center pt-24 pb-10 sm:pt-16 sm:py-16">
+        <div className="flex flex-1 items-center justify-center pt-20 pb-10 sm:pt-16 sm:py-16">
           <div className="w-full max-w-3xl">
             <div className="min-h-[40vh] rounded-3xl border border-white/15 bg-white/10 backdrop-blur-2xl py-10 px-6 sm:py-14 sm:px-10 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.7)]">
               {/* Header */}
@@ -402,7 +413,7 @@ export default function AdminCreateClient() {
                     </span>
                     <span
                         className={[
-                          'text-sm text-white/90',
+                          'text-md text-white/90',
                            mode === m.key ? 'font-semibold' : '',
                         ].join(' ')}
                     >{m.label}</span>
@@ -412,7 +423,7 @@ export default function AdminCreateClient() {
 
               {/* Messages */}
               {error && (
-                <div className="mt-5 inline-flex rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-200">
+                <div className="mt-5 inline-flex rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-md text-red-200">
                   {error}
                 </div>
               )}
@@ -428,14 +439,14 @@ export default function AdminCreateClient() {
                   <form onSubmit={submitBook} className="grid gap-4">
                     <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-12 sm:gap-x-12">
                       <div className="grid gap-2 sm:col-span-2">
-                        <label className="text-sm text-white/80">Language</label>
+                        <label className="text-md text-white/80">Language</label>
                         <select
                           value={bookForm.language}
                           onChange={(e) => {
                             setBF('language', e.target.value)
                             setBF('picture', '')
                           }}
-                          className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
+                          className="w-full h-10 rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
                         >
                           <option value="DE">DE</option>
                           <option value="PT">PT</option>
@@ -443,7 +454,7 @@ export default function AdminCreateClient() {
                       </div>
 
                       <div className="grid gap-2 sm:col-span-4">
-                        <label className="text-sm text-white/80">Book name</label>
+                        <label className="text-md text-white/80">Book name</label>
                         <input
                           value={bookForm.name}
                           onChange={(e) => setBF('name', e.target.value)}
@@ -454,7 +465,7 @@ export default function AdminCreateClient() {
                     </div>
 
                     <div className="grid gap-2 mt-6">
-                        <label className="text-sm text-white/80">Picture</label>
+                        <label className="text-md text-white/80">Picture</label>
                           <ImageUploader
                             value={bookForm.picture}
                             resetKey={bookResetKey}
@@ -488,7 +499,7 @@ export default function AdminCreateClient() {
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-12 sm:gap-x-5">
                     {/* Language */}
                     <div className="grid gap-2 sm:col-span-2">
-                      <label className="text-sm text-white/80">Language</label>
+                      <label className="text-md text-white/80">Language</label>
                       <select
                         value={wordForm.language}
                         onChange={(e) => {
@@ -497,7 +508,7 @@ export default function AdminCreateClient() {
                           setWF('topic_id', '')
                           setWF('picture', '')
                         }}
-                        className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
+                        className="w-full h-10 rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
                       >
                         <option value="DE">DE</option>
                         <option value="PT">PT</option>
@@ -506,12 +517,12 @@ export default function AdminCreateClient() {
 
                     {/* Book */}
                     <div className="grid gap-2 sm:col-span-4">
-                      <label className="text-sm text-white/80">Book</label>
+                      <label className="text-md text-white/80">Book</label>
                       <select
                         value={wordForm.book_id}
                         onChange={(e) => setWF('book_id', e.target.value)}
                         className={[
-                          "w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none",
+                          "w-full rounded-2xl h-10 border border-white/15 bg-white/10 px-4 py-3 text-white outline-none",
                           "focus:border-white/25 focus:ring-2 focus:ring-white/10",
                           wordForm.book_id ? "text-white" : "text-white/40",
                         ].join(" ")}
@@ -528,12 +539,12 @@ export default function AdminCreateClient() {
 
                     {/* Topic */}
                     <div className="grid gap-2 sm:col-span-4">
-                      <label className="text-sm text-white/80">Topic</label>
+                      <label className="text-md text-white/80">Topic</label>
                       <select
                         value={wordForm.topic_id}
                         onChange={(e) => setWF('topic_id', e.target.value)}
                         className={[
-                          "w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 outline-none",
+                          "w-full rounded-2xl h-10 border border-white/15 bg-white/10 px-4 py-3 outline-none",
                           "focus:border-white/25 focus:ring-2 focus:ring-white/10",
                           wordForm.topic_id ? "text-white" : "text-white/40",
                         ].join(" ")}
@@ -550,7 +561,7 @@ export default function AdminCreateClient() {
 
                     {/* Lesson */}
                     <div className="grid gap-2 sm:col-span-2">
-                      <label className="text-sm text-white/80">Lesson</label>
+                      <label className="text-md text-white/80">Lesson</label>
                       <input
                         value={wordForm.lesson}
                         onChange={(e) => setWF('lesson', e.target.value)}
@@ -654,7 +665,7 @@ export default function AdminCreateClient() {
 
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-6">
                       <div className="grid gap-2 sm:col-span-2">
-                        <label className="text-sm text-white/80">Picture</label>
+                        <label className="text-md text-white/80">Picture</label>
                         <ImageUploader
                           value={wordForm.picture}
                           resetKey={wordResetKey}
@@ -693,7 +704,7 @@ export default function AdminCreateClient() {
                       </div>
 
                       <div className="grid gap-2 sm:col-span-4">
-                        <label className="text-sm text-white/80">Tasks (optional)</label>
+                        <label className="text-md text-white/80">Tasks (optional)</label>
 
                         <textarea
                           value={wordForm.tasks}
@@ -722,11 +733,11 @@ export default function AdminCreateClient() {
                   <form onSubmit={submitTopic} className="grid gap-4">
                     <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-12 sm:gap-x-12">
                       <div className="grid gap-2 sm:col-span-2">
-                        <label className="text-sm text-white/80">Language</label>
+                        <label className="text-md text-white/80">Language</label>
                         <select
                           value={topicForm.language}
                           onChange={(e) => setTF('language', e.target.value)}
-                          className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
+                          className="w-full h-10 rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
                           required
                         >
                           <option value="DE">DE</option>
@@ -735,7 +746,7 @@ export default function AdminCreateClient() {
                       </div>
 
                       <div className="grid gap-2 sm:col-span-5">
-                        <label className="text-sm text-white/80">Topic name</label>
+                        <label className="text-md text-white/80">Topic name</label>
                         <input
                           value={topicForm.name}
                           onChange={(e) => setTF('name', e.target.value)}

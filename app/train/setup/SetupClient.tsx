@@ -241,8 +241,8 @@ export default function SetupClient({ bookId }: { bookId: string }) {
                   <select
                     value={selectedLesson ?? ''}
                     onChange={(e) => setSelectedLesson(e.target.value ? Number(e.target.value) : null)}
-                    className="w-full h-8 bg-transparent text-white/80 outline-none text-sm font-semibold"
-                  >
+                    className="w-full rounded-2xl h-8 border border-white/15 px-4 py-3 bg-white/10 text-white/80 outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10 text-sm font-semibold"
+                  >                          
                     <option value="" disabled className="text-slate-950">
                       Select lesson…
                     </option>

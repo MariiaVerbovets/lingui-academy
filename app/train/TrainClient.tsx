@@ -445,6 +445,8 @@ export default function TrainCardsReview() {
       setError(e?.message ?? 'Failed to save progress')
       return
     }
+
+    setCorrectThisSession((v) => v + 1)
     goNext()
   }
 
@@ -725,7 +727,7 @@ export default function TrainCardsReview() {
                               <div className="text-center">
                                 <div className="text-lg font-semibold text-white">{formatCardsWord(current)}</div>
 
-                                <div className="mt-4 space-y-2 text-sm text-white/80">
+                                <div className="mt-4 space-y-2 text-md text-white/80">
                                   {current.translation_en && (
                                     <div>
                                       <span className="text-white/45">EN:</span> {current.translation_en}
