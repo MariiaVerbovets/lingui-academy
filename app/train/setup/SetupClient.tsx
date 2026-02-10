@@ -19,6 +19,10 @@ type RawLessonRow = {
   overall_percent: number
 }
 
+type BookAccessRow = {
+  allow_all: boolean
+  allowed_lessons: number[] | null
+}
 
 export default function SetupClient({ bookId }: { bookId: string }) {
   const [isAdmin, setIsAdmin] = useState(false)
@@ -45,87 +49,110 @@ export default function SetupClient({ bookId }: { bookId: string }) {
 
   const [loading, setLoading] = useState(true)
   const [rows, setRows] = useState<RawLessonRow[]>([])
+  const [allowAll, setAllowAll] = useState(false)
+  const [allowedLessons, setAllowedLessons] = useState<number[]>([])
   const [selectedLesson, setSelectedLesson] = useState<number | null>(null)
   const [mode, setMode] = useState<TrainMode>('cards')
   const [error, setError] = useState<string | null>(null)
 
-
-  useEffect(() => {
-    const run = async () => {
-      setLoading(true)
-      setError(null)
-
-
-      const { data: sessionData } = await supabase.auth.getSession()
-      if (!sessionData.session) {
-        router.push('/login')
-        return
-      }
+useEffect(() => {
+  const run = async () => {
+    setLoading(true)
+    setError(null)
 
 
-      const admin = await getIsAdmin()
-      setIsAdmin(admin)
-
-
-      if (!bookId?.trim()) {
-        setError('Missing bookId.')
-        setRows([])
-        setSelectedLesson(null)
-        setLoading(false)
-        return
-      }
-
-
-      try {
-        const { data, error } = await supabase.rpc('get_book_lesson_progress', {
-          p_book_id: Number(bookId),
-        })
-        if (error) throw error
-
-
-        const raw = (data ?? []) as any[]
-        const normalized: RawLessonRow[] = raw.map((r) => ({
-          lesson: Number(r.lesson),
-          total_words: Number(r.total_words ?? 0),
-          cards_percent: Number(r.cards_percent ?? 0),
-          single_percent: Number(r.single_percent ?? 0),
-          writing_percent: Number(r.writing_percent ?? 0),
-          overall_percent: Number(r.overall_percent ?? 0),
-        }))
-
-
-        setRows(normalized)
-
-
-        if (normalized.length) {
-          setSelectedLesson((prev) => {
-            if (prev !== null) return prev
-
-
-            if (
-              parsedLessonFromUrl &&
-              normalized.some((r) => r.lesson === parsedLessonFromUrl)
-            ) {
-              return parsedLessonFromUrl
-            }
-
-
-            return normalized[0].lesson
-          })
-        }
-      } catch (e: any) {
-        setError(e?.message ?? 'Unknown error')
-        setRows([])
-        setSelectedLesson(null)
-      } finally {
-        setLoading(false)
-      }
+    const { data: sessionData } = await supabase.auth.getSession()
+    if (!sessionData.session) {
+      router.push('/login')
+      return
     }
 
 
-    run()
-  }, [bookId, router, parsedLessonFromUrl])
+    const admin = await getIsAdmin()
+    setIsAdmin(admin)
 
+
+    if (!bookId?.trim()) {
+      setError('Missing bookId.')
+      setRows([])
+      setSelectedLesson(null)
+      setLoading(false)
+      return
+    }
+
+
+    try {
+      const bookIdNum = Number(bookId)
+
+
+      type BookAccessRow = {
+        allow_all: boolean
+        allowed_lessons: number[] | null
+      }
+
+
+      const [{ data: progress, error: progressErr }, { data: accessRows, error: accessErr }] = await Promise.all([
+        supabase.rpc('get_book_lesson_progress', { p_book_id: bookIdNum }),
+        supabase.rpc('get_book_access_for_me', { p_book_id: bookIdNum }),
+      ])
+
+
+      if (progressErr) throw progressErr
+      if (accessErr) throw accessErr
+
+
+      // get_book_access_for_me returns ARRAY, so take first row (or null)
+      const accessRow = (accessRows?.[0] ?? null) as BookAccessRow | null
+
+
+      const allow = !!accessRow?.allow_all
+      const allowedArr = (accessRow?.allowed_lessons ?? [])
+        .map((x) => Number(x))
+        .filter((x) => Number.isFinite(x))
+
+
+      setAllowAll(allow)
+      setAllowedLessons(allowedArr)
+
+
+      const raw = (progress ?? []) as any[]
+      const normalized: RawLessonRow[] = raw.map((r) => ({
+        lesson: Number(r.lesson),
+        total_words: Number(r.total_words ?? 0),
+        cards_percent: Number(r.cards_percent ?? 0),
+        single_percent: Number(r.single_percent ?? 0),
+        writing_percent: Number(r.writing_percent ?? 0),
+        overall_percent: Number(r.overall_percent ?? 0),
+      }))
+
+
+      const allowedSet = new Set(allowedArr)
+      const visible = allow ? normalized : normalized.filter((r) => allowedSet.has(r.lesson))
+
+
+      setRows(visible)
+
+
+      if (visible.length) {
+        setSelectedLesson((prev) => {
+          if (prev !== null && visible.some((r) => r.lesson === prev)) return prev
+          if (parsedLessonFromUrl && visible.some((r) => r.lesson === parsedLessonFromUrl)) return parsedLessonFromUrl
+          return visible[0].lesson
+        })
+      } else {
+        setSelectedLesson(null)
+      }
+    } catch (e: any) {
+      setError(e?.message ?? 'Unknown error')
+      setRows([])
+      setSelectedLesson(null)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  run()
+}, [bookId, router, parsedLessonFromUrl])
 
   const selectedRow = useMemo(() => {
     if (selectedLesson === null) return null
@@ -264,7 +291,7 @@ export default function SetupClient({ bookId }: { bookId: string }) {
 
               {!error && rows.length === 0 && (
                 <div className="mt-6 inline-flex rounded-2xl border border-white/10 bg-white/5 p-4 text-md text-white/60">
-                  No words found for this book.
+                  No available lessons for this book.
                 </div>
               )}
 

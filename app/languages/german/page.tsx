@@ -72,21 +72,15 @@ export default function GermanPage() {
         return
       }
 
-
       try {
         setError(null)
-
 
         const admin = await getIsAdmin()
         setIsAdmin(admin)
 
-
-        const { data: b, error: e } = await supabase
-          .from('books')
-          .select('id,name,language,picture')
-          .eq('language', 'DE')
-          .order('name', { ascending: true })
-
+        const { data: b, error: e } = await supabase.rpc('get_allowed_books', {
+          p_lang: 'DE'
+        })
 
         if (e) throw e
         setBooks((b ?? []) as Book[])
@@ -98,7 +92,6 @@ export default function GermanPage() {
         setLoading(false)
       }
     }
-
 
     run()
   }, [router])
