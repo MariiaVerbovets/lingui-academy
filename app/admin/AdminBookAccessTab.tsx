@@ -1,0 +1,308 @@
+'use client'
+
+import { useEffect, useMemo, useState } from 'react'
+import { supabase } from '@/lib/supabaseClient'
+import Select from '../components/Select'
+
+type Language = 'DE' | 'PT'
+
+type ProfileRow = { id: string; email: string | null }
+type BookRow = { id: number; name: string; language: Language }
+
+type BookAccessRow = {
+  id: number
+  user_id: string
+  book_id: number
+  allow_all: boolean
+  allowed_lessons: number[] | null
+  created_at: string
+}
+
+const languageOptions = [
+  { value: 'DE', label: 'DE' },
+  { value: 'PT', label: 'PT' },
+]
+
+function parseLessons(input: string): number[] {
+  const result = new Set<number>()
+
+  input.split(',').forEach(part => {
+    const p = part.trim()
+
+    if (/^\d+$/.test(p)) {
+      result.add(Number(p))
+      return
+    }
+
+    const m = p.match(/^(\d+)\s*-\s*(\d+)$/)
+    if (!m) return
+
+    const start = Number(m[1])
+    const end = Number(m[2])
+    if (start > end) return
+
+    for (let i = start; i <= end; i++) result.add(i)
+  })
+
+  return [...result].sort((a, b) => a - b)
+}
+
+export default function AdminBookAccessTab() {
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [ok, setOk] = useState<string | null>(null)
+
+  const [profiles, setProfiles] = useState<ProfileRow[]>([])
+  const [books, setBooks] = useState<BookRow[]>([])
+  const [grants, setGrants] = useState<BookAccessRow[]>([])
+
+  const [form, setForm] = useState({
+    user_id: '',
+    language: 'DE' as Language,
+    book_id: '',
+    allow_all: true,
+    lessonsCsv: '',
+  })
+
+  const setF = (k: string, v: any) => setForm((p) => ({ ...p, [k]: v }))
+
+  const bookOptions = useMemo(() => {
+    return books
+      .filter((b) => b.language === form.language)
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((b) => ({ value: String(b.id), label: b.name }))
+  }, [books, form.language])
+
+  const userOptions = useMemo(() => {
+    return profiles
+      .filter((p) => !!p.email)
+      .sort((a, b) => String(a.email).localeCompare(String(b.email)))
+      .map((p) => ({ value: p.id, label: p.email as string }))
+  }, [profiles])
+
+  const loadAll = async () => {
+    setError(null)
+
+    // users list (owner-only via RPC)
+    const { data: profData, error: profErr } = await supabase.rpc('owner_list_profiles')
+    if (profErr) throw profErr
+    setProfiles((profData ?? []) as ProfileRow[])
+
+    // books
+    const { data: bookData, error: bookErr } = await supabase
+      .from('books')
+      .select('id,name,language')
+      .order('name', { ascending: true })
+    if (bookErr) throw bookErr
+    setBooks((bookData ?? []) as BookRow[])
+
+    // existing access rows
+    const { data: accessData, error: accessErr } = await supabase
+      .from('book_access')
+      .select('id,user_id,book_id,allow_all,allowed_lessons,created_at')
+      .order('created_at', { ascending: false })
+      .limit(200)
+
+    if (accessErr) throw accessErr
+    setGrants((accessData ?? []) as BookAccessRow[])
+  }
+
+  useEffect(() => {
+    const run = async () => {
+      try {
+        setLoading(true)
+        await loadAll()
+      } catch (e: any) {
+        setError(e?.message ?? 'Unknown error')
+      } finally {
+        setLoading(false)
+      }
+    }
+    run()
+  }, [])
+
+  useEffect(() => {
+    if (!ok) return
+    const t = setTimeout(() => setOk(null), 5000)
+    return () => clearTimeout(t)
+  }, [ok])
+
+  const upsertAccess = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setOk(null)
+
+    if (!form.user_id) return setError('Select a student.')
+    if (!form.book_id) return setError('Select a book.')
+
+    const payload =
+      form.allow_all
+        ? {
+            user_id: form.user_id,
+            book_id: Number(form.book_id),
+            allow_all: true,
+            allowed_lessons: null,
+          }
+        : {
+            user_id: form.user_id,
+            book_id: Number(form.book_id),
+            allow_all: false,
+            allowed_lessons: parseLessons(form.lessonsCsv),
+          }
+
+    if (!payload.allow_all && (!payload.allowed_lessons || payload.allowed_lessons.length === 0)) {
+      return setError('Enter lessons as CSV, e.g. 1,2,3 (or enable "All lessons").')
+    }
+
+    const { error: upErr } = await supabase
+      .from('book_access')
+      .upsert(payload, { onConflict: 'user_id,book_id' })
+
+    if (upErr) return setError(upErr.message)
+
+    setOk('Access saved ✅')
+    await loadAll()
+  }
+
+  const removeAccess = async (row: BookAccessRow) => {
+    setError(null)
+    setOk(null)
+
+    const { error: delErr } = await supabase.from('book_access').delete().eq('id', row.id)
+    if (delErr) return setError(delErr.message)
+
+    setOk('Access removed ✅')
+    await loadAll()
+  }
+
+  if (loading) {
+    return <p className="text-white/60">Loading…</p>
+  }
+
+  const bookNameById = new Map(books.map((b) => [String(b.id), b.name]))
+  const emailById = new Map(profiles.map((p) => [p.id, p.email ?? p.id]))
+
+  return (
+    <div className="grid gap-8">
+      {error && (
+        <div className="inline-flex rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-md text-red-200">
+          {error}
+        </div>
+      )}
+      {ok && (
+        <div className="inline-flex rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm text-emerald-200">
+          {ok}
+        </div>
+      )}
+
+      <form onSubmit={upsertAccess} className="grid gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-12 sm:gap-x-5">
+          <div className="grid gap-2 sm:col-span-6">
+            <label className="text-md text-white/80">Student</label>
+            <Select
+              value={form.user_id}
+              onChange={(v) => setF('user_id', v)}
+              options={userOptions}
+              placeholder="- choose -"
+            />
+          </div>
+
+          <div className="grid gap-2 sm:col-span-2">
+            <label className="text-md text-white/80">Language</label>
+            <Select
+              value={form.language}
+              onChange={(v) => {
+                setF('language', v)
+                setF('book_id', '')
+              }}
+              options={languageOptions}
+              placeholder="Language"
+            />
+          </div>
+
+          <div className="grid gap-2 sm:col-span-4">
+            <label className="text-md text-white/80">Book</label>
+            <Select
+              value={form.book_id}
+              onChange={(v) => setF('book_id', v)}
+              options={bookOptions}
+              placeholder="- choose -"
+            />
+          </div>
+        </div>
+
+        <div className="mt-2 rounded-2xl border border-white/10 bg-white/5 p-4">
+          <label className="flex items-center gap-3 text-white/85">
+            <input
+              type="checkbox"
+              checked={form.allow_all}
+              onChange={(e) => setF('allow_all', e.target.checked)}
+              className="h-4 w-4 accent-violet-500"
+            />
+            All lessons allowed
+          </label>
+
+          {!form.allow_all && (
+            <div className="mt-4 grid gap-2">
+              <label className="text-sm text-white/60">Allowed lessons</label>
+              <input
+                value={form.lessonsCsv}
+                onChange={(e) => setF('lessonsCsv', e.target.value)}
+                placeholder="1,2,3"
+                className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
+              />
+            </div>
+          )}
+        </div>
+
+        <button
+          type="submit"
+          className="mt-6 w-full rounded-2xl bg-white px-4 py-3.5 text-base font-semibold text-slate-950 shadow-lg shadow-white/10 transition hover:-translate-y-[1px] hover:shadow-xl active:translate-y-0"
+        >
+          Save access
+        </button>
+      </form>
+
+      <hr className="m-6 border-white/20" />
+
+      {/* Existing grants */}
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+        <p className="text-white font-semibold">Existing access</p>
+
+        <div className="mt-4 grid gap-2">
+          {grants.length === 0 ? (
+            <p className="text-white/60 text-sm">No access rows yet.</p>
+          ) : (
+            grants.map((g) => (
+              <div
+                key={g.id}
+                className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-white/10 bg-black/20 p-3"
+              >
+                <div className="text-sm text-white/85">
+                  <div>
+                    <span className="text-white/50">Student:</span> {emailById.get(g.user_id)}
+                  </div>
+                  <div>
+                    <span className="text-white/50">Book:</span> {bookNameById.get(String(g.book_id)) ?? `#${g.book_id}`}
+                  </div>
+                  <div>
+                    <span className="text-white/50">Lessons:</span>{' '}
+                    {g.allow_all ? 'ALL' : (g.allowed_lessons ?? []).join(', ')}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => removeAccess(g)}
+                  className="self-start sm:self-auto rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-2 text-sm text-red-200 hover:bg-red-500/15"
+                >
+                  Remove
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
