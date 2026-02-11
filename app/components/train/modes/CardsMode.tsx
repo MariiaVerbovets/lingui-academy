@@ -60,7 +60,7 @@ export function CardsMode({
         </div>
       </button>
 
-      <div className="mt-7 flex items-center justify-between">
+      <div className="mt-12 flex items-center justify-between">
         <button
           type="button"
           onClick={onWrong}
