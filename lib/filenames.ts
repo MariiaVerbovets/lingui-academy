@@ -1,7 +1,15 @@
+const GERMAN_CHAR_MAP: Record<string, string> = {
+  ä: 'ae',
+  ö: 'oe',
+  ü: 'ue',
+  ß: 'ss',
+}
+
 export const slugify = (s: string) =>
   (s ?? '')
     .toLowerCase()
     .trim()
+    .replace(/[äöüß]/g, (ch) => GERMAN_CHAR_MAP[ch] ?? ch)
     .replace(/\s+/g, '-')
     .replace(/[^a-z0-9\-_.]/g, '')
     .replace(/\-+/g, '-')
@@ -20,10 +28,27 @@ export const langFolder = (lang: 'DE' | 'PT') => lang.toLowerCase()
 
 export const buildBookBase = (bookName: string) => slugify(bookName) || 'book'
 
-export const buildWordBase = (p: { lesson: string | number; topicName: string; wordSingular: string }) => {
+export const buildWordBase = (p: {
+  lesson: string | number
+  topicName: string
+  wordSingular: string
+  wordPlural?: string
+}) => {
+  const singular = (p.wordSingular ?? '').trim()
+  const plural = (p.wordPlural ?? '').trim()
+
+  const rawWordName =
+    singular === '-'
+      ? plural
+      : singular || plural
+
+  const wordSlug = slugify(rawWordName) || 'word'
+
   return [
     `lesson-${p.lesson}`,
     slugify(p.topicName),
-    slugify(p.wordSingular),
-  ].filter(Boolean).join('-')
+    wordSlug,
+  ]
+    .filter(Boolean)
+    .join('-')
 }

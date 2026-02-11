@@ -133,7 +133,7 @@ export default function AdminClient() {
               </div>
 
               {/* Tab content */}
-              <div className="mt-8 min-h-[620px]">
+              <div className="mt-8">
                 <section className={tab === 'create' ? 'block' : 'hidden'} aria-hidden={tab !== 'create'}>
                   <AdminCreateContentTab />
                 </section>

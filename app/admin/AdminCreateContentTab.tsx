@@ -46,35 +46,79 @@ const MODE_ITEMS = [
   { key: 'topic' as const, label: '🎨 Topic' },
 ]
 
+type BookForm = {
+  language: Language
+  name: string
+  picture: string
+}
+
+type TopicForm = {
+  language: Language
+  name: string
+}
+
+type WordForm = {
+  language: Language
+  word_singular: string
+  word_plural: string
+  article_singular: string
+  article_plural: string
+  translation_ru: string
+  translation_ukr: string
+  translation_en: string
+  book_id: string
+  lesson: string
+  topic_id: string
+  picture: string
+  tasks: string
+}
+
+type BookField = 'language' | 'name' | 'picture'
+type TopicField = 'language' | 'name'
+type WordField =
+  | 'language'
+  | 'book_id'
+  | 'topic_id'
+  | 'lesson'
+  | 'word_singular'
+  | 'word_plural'
+  | 'article_singular'
+  | 'article_plural'
+  | 'translation_en'
+  | 'translation_ukr'
+  | 'translation_ru'
+  | 'picture'
+  | 'tasks'
+
+type BookErrors = Partial<Record<BookField, string>>
+type TopicErrors = Partial<Record<TopicField, string>>
+type WordErrors = Partial<Record<WordField, string>>
+
 export default function AdminCreateContentTab() {
   const [loading, setLoading] = useState(true)
   const [mode, setMode] = useState<Mode>('word')
 
   const [books, setBooks] = useState<Book[]>([])
+  const [topics, setTopics] = useState<Topic[]>([])
+
+  // Global (server/network) messages
   const [error, setError] = useState<string | null>(null)
   const [ok, setOk] = useState<string | null>(null)
 
-  const [topics, setTopics] = useState<Topic[]>([])
-  const [topicForm, setTopicForm] = useState({
-    language: 'DE' as Language,
-    name: '',
-  })
-
-  const languageOptions = [
-    { value: 'DE', label: 'DE' },
-    { value: 'PT', label: 'PT' },
-  ]
-
-  const setTF = (k: string, v: string) => setTopicForm((p) => ({ ...p, [k]: v }))
-
-  const [bookForm, setBookForm] = useState({
-    language: 'DE' as Language,
+  // Forms
+  const [bookForm, setBookForm] = useState<BookForm>({
+    language: 'DE',
     name: '',
     picture: '',
   })
 
-  const [wordForm, setWordForm] = useState({
-    language: 'DE' as Language,
+  const [topicForm, setTopicForm] = useState<TopicForm>({
+    language: 'DE',
+    name: '',
+  })
+
+  const [wordForm, setWordForm] = useState<WordForm>({
+    language: 'DE',
     word_singular: '',
     word_plural: '',
     article_singular: '',
@@ -89,9 +133,135 @@ export default function AdminCreateContentTab() {
     tasks: '[]',
   })
 
+  // Inline validation state
+  const [bookErrors, setBookErrors] = useState<BookErrors>({})
+  const [topicErrors, setTopicErrors] = useState<TopicErrors>({})
+  const [wordErrors, setWordErrors] = useState<WordErrors>({})
+
+  const [bookSubmitAttempted, setBookSubmitAttempted] = useState(false)
+  const [topicSubmitAttempted, setTopicSubmitAttempted] = useState(false)
+  const [wordSubmitAttempted, setWordSubmitAttempted] = useState(false)
+
   const [bookResetKey, setBookResetKey] = useState(0)
   const [wordResetKey, setWordResetKey] = useState(0)
 
+  const languageOptions = [
+    { value: 'DE', label: 'DE' },
+    { value: 'PT', label: 'PT' },
+  ]
+
+  const hasLetter = (v: string) => /[A-Za-zÀ-ÖØ-öø-ÿА-Яа-яЁё]/.test((v ?? '').trim())
+  const isDash = (v: string) => (v ?? '').trim() === '-'
+  const needsArticle = (v: string) => {
+    const t = (v ?? '').trim()
+    return t.length > 0 && !isDash(t) && hasLetter(t)
+  }
+
+  const scrollToTop = () => {
+    if (typeof window === 'undefined') return
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    })
+  }
+
+  const validateBookForm = (f: BookForm): BookErrors => {
+    const errs: BookErrors = {}
+    if (!f.language) errs.language = 'Choose a language'
+    if (!f.name.trim()) errs.name = 'Book name required'
+    if (!f.picture.trim()) errs.picture = 'Picture '
+    return errs
+  }
+
+  const validateTopicForm = (f: TopicForm): TopicErrors => {
+    const errs: TopicErrors = {}
+    if (!f.language) errs.language = 'Choose a language'
+    if (!f.name.trim()) errs.name = 'Topic required'
+    return errs
+  }
+
+  const validateWordForm = (f: WordForm): WordErrors => {
+    const errs: WordErrors = {}
+    const cfg = ARTICLES_BY_LANGUAGE[f.language]
+
+    const singular = (f.word_singular ?? '').trim()
+    const plural = (f.word_plural ?? '').trim()
+    const singArticle = (f.article_singular ?? '').trim().toLowerCase()
+    const plArticle = (f.article_plural ?? '').trim().toLowerCase()
+
+    if (!f.language) errs.language = 'Choose a language'
+    if (!f.book_id) errs.book_id = 'Choose a book'
+    if (!f.topic_id) errs.topic_id = 'Choose a topic'
+
+    const lessonNum = Number(f.lesson)
+    if (!Number.isInteger(lessonNum) || lessonNum < 1) {
+      errs.lesson = 'Choose a number'
+    }
+
+    if (!singular) {
+      errs.word_singular = 'Singular form required'
+    }
+
+    if (isDash(singular) && !plural) {
+      errs.word_plural = 'Plural form required'
+    }
+
+    const allowedSing = cfg.singular.map((x) => x.toLowerCase())
+    const allowedPl = cfg.plural.map((x) => x.toLowerCase())
+
+    if (needsArticle(singular) && !allowedSing.includes(singArticle)) {
+      errs.article_singular = 'Article required'
+    }
+
+    if (needsArticle(plural) && !allowedPl.includes(plArticle)) {
+      errs.article_plural = 'Article required'
+    }
+
+    if (!f.translation_en.trim()) errs.translation_en = 'Translation required'
+    if (!f.translation_ukr.trim()) errs.translation_ukr = 'Translation required'
+    if (!f.translation_ru.trim()) errs.translation_ru = 'Translation required'
+
+    if (!f.picture.trim()) errs.picture = 'Picture required'
+
+    try {
+      JSON.parse(f.tasks || '[]')
+    } catch {
+      errs.tasks = 'Tasks should be a valid JSON'
+    }
+
+    return errs
+  }
+
+  const setBF = <K extends keyof BookForm>(k: K, v: BookForm[K]) => {
+    setBookForm((prev) => {
+      const next = { ...prev, [k]: v }
+      if (bookSubmitAttempted) {
+        setBookErrors(validateBookForm(next))
+      }
+      return next
+    })
+  }
+
+  const setTF = <K extends keyof TopicForm>(k: K, v: TopicForm[K]) => {
+    setTopicForm((prev) => {
+      const next = { ...prev, [k]: v }
+      if (topicSubmitAttempted) {
+        setTopicErrors(validateTopicForm(next))
+      }
+      return next
+    })
+  }
+
+  const setWF = <K extends keyof WordForm>(k: K, v: WordForm[K]) => {
+    setWordForm((prev) => {
+      const next = { ...prev, [k]: v }
+      if (wordSubmitAttempted) {
+        setWordErrors(validateWordForm(next))
+      }
+      return next
+    })
+  }
+
+  // Keep selected article values valid for chosen language
   useEffect(() => {
     const cfg = ARTICLES_BY_LANGUAGE[wordForm.language]
     if (!cfg) return
@@ -102,13 +272,20 @@ export default function AdminCreateContentTab() {
 
       const singOk = !sing || cfg.singular.includes(sing)
       const plOk = !pl || cfg.plural.includes(pl)
-      return {
+
+      const next = {
         ...p,
         article_singular: singOk ? p.article_singular : '',
         article_plural: plOk ? p.article_plural : '',
       }
+
+      if (wordSubmitAttempted) {
+        setWordErrors(validateWordForm(next))
+      }
+
+      return next
     })
-  }, [wordForm.language])
+  }, [wordForm.language, wordSubmitAttempted])
 
   useEffect(() => {
     if (!ok) return
@@ -121,18 +298,6 @@ export default function AdminCreateContentTab() {
     const t = setTimeout(() => setError(null), 10000)
     return () => clearTimeout(t)
   }, [error])
-
-  const loadBooks = async () => {
-    const { data, error } = await supabase.from('books').select('id,name,language,picture').order('name', { ascending: true })
-    if (error) throw error
-    setBooks((data ?? []) as Book[])
-  }
-
-  const loadTopics = async () => {
-    const { data, error } = await supabase.from('topics').select('id,name,language').order('name', { ascending: true })
-    if (error) throw error
-    setTopics((data ?? []) as Topic[])
-  }
 
   const refetchAll = async () => {
     const [booksRes, topicsRes] = await Promise.all([
@@ -167,8 +332,15 @@ export default function AdminCreateContentTab() {
     }
   }, [])
 
-  const booksForSelectedLanguage = useMemo(() => books.filter((b) => b.language === wordForm.language), [books, wordForm.language])
-  const topicsForSelectedLanguage = useMemo(() => topics.filter((t) => t.language === wordForm.language), [topics, wordForm.language])
+  const booksForSelectedLanguage = useMemo(
+    () => books.filter((b) => b.language === wordForm.language),
+    [books, wordForm.language],
+  )
+
+  const topicsForSelectedLanguage = useMemo(
+    () => topics.filter((t) => t.language === wordForm.language),
+    [topics, wordForm.language],
+  )
 
   const bookOptions = useMemo(() => {
     return booksForSelectedLanguage.map((b) => ({
@@ -187,34 +359,27 @@ export default function AdminCreateContentTab() {
   useEffect(() => {
     setError(null)
     setOk(null)
+
+    setBookErrors({})
+    setTopicErrors({})
+    setWordErrors({})
+
+    setBookSubmitAttempted(false)
+    setTopicSubmitAttempted(false)
+    setWordSubmitAttempted(false)
   }, [mode])
-
-  const setWF = (k: string, v: string) => setWordForm((p) => ({ ...p, [k]: v }))
-  const setBF = (k: string, v: string) => setBookForm((p) => ({ ...p, [k]: v }))
-
-  const scrollToTop = () => {
-    if (typeof window === 'undefined') return
-    window.requestAnimationFrame(() => {
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-    })
-  }
 
   // ---------- Save book ----------
   const submitBook = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     setOk(null)
+    setBookSubmitAttempted(true)
     scrollToTop()
 
-    if (!bookForm.name.trim()) {
-      setError('Book name is required.')
-      return
-    }
-
-    if (!bookForm.picture.trim()) {
-      setError('Picture is required.')
-      return
-    }
+    const errs = validateBookForm(bookForm)
+    setBookErrors(errs)
+    if (Object.keys(errs).length > 0) return
 
     const payload = {
       language: bookForm.language,
@@ -222,7 +387,11 @@ export default function AdminCreateContentTab() {
       picture: bookForm.picture.trim(),
     }
 
-    const { error: insErr } = await supabase.from('books').insert(payload).select('id,name,language,picture').single()
+    const { error: insErr } = await supabase
+      .from('books')
+      .insert(payload)
+      .select('id,name,language,picture')
+      .single()
 
     if (insErr) {
       setError(insErr.message)
@@ -231,6 +400,8 @@ export default function AdminCreateContentTab() {
 
     setOk('Book added ✅')
     setBookForm((p) => ({ ...p, name: '', picture: '' }))
+    setBookErrors({})
+    setBookSubmitAttempted(false)
     setBookResetKey((k) => k + 1)
     await refetchAll()
   }
@@ -240,27 +411,33 @@ export default function AdminCreateContentTab() {
     e.preventDefault()
     setError(null)
     setOk(null)
+    setTopicSubmitAttempted(true)
     scrollToTop()
 
-    if (!topicForm.name.trim()) {
-      setError('Topic name is required.')
-      return
-    }
+    const errs = validateTopicForm(topicForm)
+    setTopicErrors(errs)
+    if (Object.keys(errs).length > 0) return
 
     const payload = {
       language: topicForm.language,
       name: topicForm.name.trim(),
     }
 
-    const { error } = await supabase.from('topics').insert(payload).select('id,name,language').single()
+    const { error: insErr } = await supabase
+      .from('topics')
+      .insert(payload)
+      .select('id,name,language')
+      .single()
 
-    if (error) {
-      setError(error.message)
+    if (insErr) {
+      setError(insErr.message)
       return
     }
 
     setOk('Topic added ✅')
     setTopicForm((p) => ({ ...p, name: '' }))
+    setTopicErrors({})
+    setTopicSubmitAttempted(false)
     await refetchAll()
   }
 
@@ -269,60 +446,43 @@ export default function AdminCreateContentTab() {
     e.preventDefault()
     setError(null)
     setOk(null)
+    setWordSubmitAttempted(true)
     scrollToTop()
 
-    if (!wordForm.book_id) {
-      setError('Please select a book.')
-      return
-    }
-
-    if (!wordForm.topic_id) {
-      setError('Please select a topic.')
-      return
-    }
-
-    if (!wordForm.picture.trim()) {
-      setError('Picture is required.')
-      return
-    }
+    const errs = validateWordForm(wordForm)
+    setWordErrors(errs)
+    if (Object.keys(errs).length > 0) return
 
     const lessonNum = Number(wordForm.lesson)
-    if (!Number.isFinite(lessonNum) || lessonNum < 1) {
-      setError('Enter correct lesson number.')
-      return
-    }
+    const singular = wordForm.word_singular.trim()
+    const plural = wordForm.word_plural.trim()
 
-    let tasksJson: any
+    let tasksJson: any = []
     try {
       tasksJson = JSON.parse(wordForm.tasks || '[]')
     } catch {
-      setError('Tasks must be valid JSON (e.g. []).')
+      setWordErrors((p) => ({ ...p, tasks: 'Tasks should be a valid JSON' }))
       return
     }
 
     const cfg = ARTICLES_BY_LANGUAGE[wordForm.language]
-    const sing = wordForm.article_singular.trim()
-    const pl = wordForm.article_plural.trim()
+    const singArticle = wordForm.article_singular.trim().toLowerCase()
+    const plArticle = wordForm.article_plural.trim().toLowerCase()
 
     const payload = {
       language: wordForm.language,
-      word_singular: wordForm.word_singular.trim(),
-      word_plural: wordForm.word_plural.trim() || null,
-      article_singular: sing && cfg.singular.includes(sing) ? sing : null,
-      article_plural: pl && cfg.plural.includes(pl) ? pl : null,
-      translation_ru: wordForm.translation_ru.trim() || null,
-      translation_ukr: wordForm.translation_ukr.trim() || null,
-      translation_en: wordForm.translation_en.trim() || null,
+      word_singular: singular,
+      word_plural: plural || null,
+      article_singular: singArticle && cfg.singular.map((x) => x.toLowerCase()).includes(singArticle) ? singArticle : null,
+      article_plural: plArticle && cfg.plural.map((x) => x.toLowerCase()).includes(plArticle) ? plArticle : null,
+      translation_ru: wordForm.translation_ru.trim(),
+      translation_ukr: wordForm.translation_ukr.trim(),
+      translation_en: wordForm.translation_en.trim(),
       book_id: Number(wordForm.book_id),
       lesson: lessonNum,
       topic_id: Number(wordForm.topic_id),
       picture: wordForm.picture.trim(),
       tasks: tasksJson,
-    }
-
-    if (!payload.word_singular) {
-      setError('Word (singular) is required.')
-      return
     }
 
     const { error: insErr } = await supabase.from('words').insert(payload)
@@ -344,14 +504,25 @@ export default function AdminCreateContentTab() {
       picture: '',
       tasks: '[]',
     }))
+    setWordErrors({})
+    setWordSubmitAttempted(false)
     setWordResetKey((k) => k + 1)
   }
 
   if (loading) {
-    return (
-      <p className="pt-10 text-center text-white/60">Loading…</p>
-    )
+    return <p className="pt-10 text-center text-white/60">Loading…</p>
   }
+
+  const FieldError = ({ msg }: { msg?: string }) => (
+    <p
+      className={[
+        'mt-1 min-h-[12px] text-xs leading-4',
+        msg ? 'text-red-300' : 'text-transparent',
+      ].join(' ')}
+    >
+      {msg || '\u00A0'}
+    </p>
+  )
 
   const ArticleChips = ({
     value,
@@ -389,308 +560,361 @@ export default function AdminCreateContentTab() {
       </div>
     )
   }
+
   return (
-      <>
-        {/* Mode switch (radio) */}
-        <div className="mt-6 flex flex-wrap gap-8">
+    <>
+      {/* Mode switch */}
+      <div className="mt-6 flex flex-wrap gap-8">
         {MODE_ITEMS.map((m) => (
-            <label key={m.key} className="flex items-center gap-2 cursor-pointer select-none rounded-xl py-2 transition">
+          <label key={m.key} className="flex items-center gap-2 cursor-pointer select-none rounded-xl py-2 transition">
             <input
-                type="radio"
-                name="mode"
-                value={m.key}
-                checked={mode === m.key}
-                onChange={() => setMode(m.key)}
-                className="sr-only"
+              type="radio"
+              name="mode"
+              value={m.key}
+              checked={mode === m.key}
+              onChange={() => setMode(m.key)}
+              className="sr-only"
             />
             <span
-                className={[
+              className={[
                 'h-5 w-5 rounded-full border transition flex items-center justify-center',
                 mode === m.key ? 'border-violet-400 bg-violet-500/30' : 'border-white/25 bg-white/5',
-                ].join(' ')}
-                aria-hidden="true"
+              ].join(' ')}
+              aria-hidden="true"
             >
-                <span className={['h-3 w-3 rounded-full transition', mode === m.key ? 'bg-violet-400' : 'bg-transparent'].join(' ')} />
+              <span className={['h-3 w-3 rounded-full transition', mode === m.key ? 'bg-violet-400' : 'bg-transparent'].join(' ')} />
             </span>
             <span className={['text-md text-white/90', mode === m.key ? 'font-semibold' : ''].join(' ')}>{m.label}</span>
-            </label>
+          </label>
         ))}
-        </div>
-        {/* Messages */}
-        {error && <div className="mt-5 inline-flex rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-md text-red-200">{error}</div>}
-        {ok && <div className="mt-5 inline-flex rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm text-emerald-200">{ok}</div>}
-        {/* Forms */}
-        <div className="mt-6">
+      </div>
+
+      {/* Global messages */}
+      {error && <div className="mt-5 inline-flex rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-md text-red-200">{error}</div>}
+      {ok && <div className="mt-5 inline-flex rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm text-emerald-200">{ok}</div>}
+
+      <div className="mt-6">
+        {/* BOOK FORM */}
         {mode === 'book' ? (
-            <form onSubmit={submitBook} className="grid gap-4">
+          <form onSubmit={submitBook} noValidate className="grid gap-4">
             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-12 sm:gap-x-12">
-                <div className="grid gap-2 sm:col-span-3">
+              <div className="grid gap-2 sm:col-span-3">
                 <label className="text-md text-white/80">Language</label>
                 <Select
-                    value={bookForm.language}
-                    onChange={(v) => {
-                    setBF('language', v)
+                  value={bookForm.language}
+                  onChange={(v) => {
+                    setBF('language', v as Language)
                     setBF('picture', '')
-                    }}
-                    options={languageOptions}
-                    placeholder='Language'
+                  }}
+                  options={languageOptions}
+                  placeholder="Language"
                 />
-                </div>
-                <div className="grid gap-2 sm:col-span-5">
+                <FieldError msg={bookErrors.language} />
+              </div>
+
+              <div className="grid gap-2 sm:col-span-5">
                 <label className="text-md text-white/80">Book name</label>
                 <input
-                    value={bookForm.name}
-                    onChange={(e) => setBF('name', e.target.value)}
-                    className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
-                    required
+                  value={bookForm.name}
+                  onChange={(e) => setBF('name', e.target.value)}
+                  className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
                 />
-                </div>
+                <FieldError msg={bookErrors.name} />
+              </div>
             </div>
+
             <div className="grid gap-2 mt-6">
-                <label className="text-md text-white/80">Picture</label>
-                <ImageUploader
+              <label className="text-md text-white/80">Picture</label>
+              <ImageUploader
                 value={bookForm.picture}
                 resetKey={bookResetKey}
                 onChange={(url) => setBF('picture', url)}
                 onError={(msg) => setError(msg)}
                 upload={async (file) => {
-                    const baseName = buildBookBase(bookForm.name)
-                    return await uploadWithIncrement(file, {
+                  const baseName = buildBookBase(bookForm.name)
+                  return await uploadWithIncrement(file, {
                     entity: 'books',
                     language: bookForm.language,
                     baseName,
-                    })
+                  })
                 }}
                 canUpload={() => {
-                    if (!bookForm.name.trim()) return { ok: false, message: 'Enter book name first.' }
-                    return { ok: true }
+                  if (!bookForm.name.trim()) return { ok: false, message: 'Enter book name first.' }
+                  return { ok: true }
                 }}
-                />
+              />
+              <FieldError msg={bookErrors.picture} />
             </div>
+
             <button
-                type="submit"
-                disabled={!bookForm.picture.trim()}
-                className="mt-10 w-full rounded-2xl bg-white px-4 py-3.5 text-base font-semibold text-slate-950 shadow-lg shadow-white/10 transition hover:-translate-y-[1px] hover:shadow-xl active:translate-y-0"
+              type="submit"
+              className="w-full rounded-2xl bg-white px-4 py-3.5 text-base font-semibold text-slate-950 shadow-lg shadow-white/10 transition hover:-translate-y-[1px] hover:shadow-xl active:translate-y-0"
             >
-                Save book
+              Save book
             </button>
-            </form>
+          </form>
         ) : mode === 'word' ? (
-            <form onSubmit={submitWord} className="grid gap-10">
+          /* WORD FORM */
+          <form onSubmit={submitWord} noValidate className="grid gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-12 sm:gap-x-5">
-                {/* Language */}
-                <div className="grid gap-2 sm:col-span-2">
+              <div className="grid gap-2 sm:col-span-2">
                 <label className="text-md text-white/80">Language</label>
                 <Select
-                    value={wordForm.language}
-                    onChange={(v) => {
-                    setWF('language', v)
+                  value={wordForm.language}
+                  onChange={(v) => {
+                    setWF('language', v as Language)
                     setWF('book_id', '')
                     setWF('topic_id', '')
                     setWF('picture', '')
-                    }}
-                    options={languageOptions}
-                    placeholder='Language'
+                  }}
+                  options={languageOptions}
+                  placeholder="Language"
                 />
-                </div>
-                {/* Book */}
-                <div className="grid gap-2 sm:col-span-4">
+                <FieldError msg={wordErrors.language} />
+              </div>
+
+              <div className="grid gap-2 sm:col-span-4">
                 <label className="text-md text-white/80">Book</label>
                 <Select
-                    value={wordForm.book_id}
-                    onChange={(v) => setWF('book_id', v)}
-                    options={bookOptions}
-                    placeholder='- choose -'
+                  value={wordForm.book_id}
+                  onChange={(v) => setWF('book_id', v)}
+                  options={bookOptions}
+                  placeholder="- choose -"
                 />
-                </div>
-                {/* Topic */}
-                <div className="grid gap-2 sm:col-span-4">
+                <FieldError msg={wordErrors.book_id} />
+              </div>
+
+              <div className="grid gap-2 sm:col-span-4">
                 <label className="text-md text-white/80">Topic</label>
                 <Select
-                    value={wordForm.topic_id}
-                    onChange={(v) => setWF('topic_id', v)}
-                    options={topicOptions}
-                    placeholder='- choose -'
+                  value={wordForm.topic_id}
+                  onChange={(v) => setWF('topic_id', v)}
+                  options={topicOptions}
+                  placeholder="- choose -"
                 />
-                </div>
-                {/* Lesson */}
-                <div className="grid gap-2 sm:col-span-2">
+                <FieldError msg={wordErrors.topic_id} />
+              </div>
+
+              <div className="grid gap-2 sm:col-span-2">
                 <label className="text-md text-white/80">Lesson</label>
                 <input
-                    value={wordForm.lesson}
-                    onChange={(e) => setWF('lesson', e.target.value)}
-                    type="number"
-                    min={1}
-                    className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
-                    required
+                  value={wordForm.lesson}
+                  onChange={(e) => setWF('lesson', e.target.value)}
+                  type="number"
+                  min={1}
+                  className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
                 />
-                </div>
+                <FieldError msg={wordErrors.lesson} />
+              </div>
             </div>
-            {/* Word + Article grouped (mobile friendly) */}
+
+            {/* Word + Article */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-12">
-                {/* WORD card */}
-                <div className="sm:col-span-6 rounded-2xl border border-white/10 bg-white/5 p-5">
+              {/* WORD */}
+              <div className="sm:col-span-6 rounded-2xl border border-white/10 bg-white/5 p-5">
                 <p className="text-white font-semibold text-base leading-none">Word</p>
-                <div className="mt-4 grid grid-cols-1 gap-6">
-                    <div className="grid gap-2">
+                <div className="mt-4 grid grid-cols-1 gap-3">
+                  <div className="grid gap-2">
                     <label className="text-sm text-white/60">Singular</label>
                     <input
-                        value={wordForm.word_singular}
-                        onChange={(e) => setWF('word_singular', e.target.value)}
-                        className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
-                        required
+                      value={wordForm.word_singular}
+                      onChange={(e) => setWF('word_singular', e.target.value)}
+                      className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
                     />
-                    </div>
-                    <div className="grid gap-2">
+                    <FieldError msg={wordErrors.word_singular} />
+                  </div>
+
+                  <div className="grid gap-2">
                     <label className="text-sm text-white/60">Plural</label>
                     <input
-                        value={wordForm.word_plural}
-                        onChange={(e) => setWF('word_plural', e.target.value)}
-                        className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
+                      value={wordForm.word_plural}
+                      onChange={(e) => setWF('word_plural', e.target.value)}
+                      className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
                     />
-                    </div>
+                    <FieldError msg={wordErrors.word_plural} />
+                  </div>
                 </div>
-                </div>
-                {/* ARTICLE card */}
-                <div className="sm:col-span-6 rounded-2xl border border-white/10 bg-white/5 p-5">
+              </div>
+
+              {/* ARTICLE */}
+              <div className="sm:col-span-6 rounded-2xl border border-white/10 bg-white/5 p-5">
                 <p className="text-white font-semibold text-base leading-none">Article</p>
                 {(() => {
-                    const cfg = ARTICLES_BY_LANGUAGE[wordForm.language]
-                    return (
-                    <div className="mt-4 grid grid-cols-1 gap-6">
-                        {/* Singular */}
-                        <div className="grid gap-2">
+                  const cfg = ARTICLES_BY_LANGUAGE[wordForm.language]
+                  return (
+                    <div className="mt-4 grid grid-cols-1 gap-3">
+                      <div className="grid gap-2">
                         <label className="text-sm text-white/60">Singular</label>
-                        <ArticleChips value={wordForm.article_singular} options={cfg.singular} onChange={(v) => setWF('article_singular', v)} />
-                        </div>
-                        {/* Plural */}
-                        <div className="grid gap-2">
+                        <ArticleChips
+                          value={wordForm.article_singular}
+                          options={cfg.singular}
+                          onChange={(v) => setWF('article_singular', v)}
+                        />
+                        <FieldError msg={wordErrors.article_singular} />
+                      </div>
+
+                      <div className="grid gap-2">
                         <label className="text-sm text-white/60">Plural</label>
-                        <ArticleChips value={wordForm.article_plural} options={cfg.plural} onChange={(v) => setWF('article_plural', v)} />
-                        </div>
+                        <ArticleChips
+                          value={wordForm.article_plural}
+                          options={cfg.plural}
+                          onChange={(v) => setWF('article_plural', v)}
+                        />
+                        <FieldError msg={wordErrors.article_plural} />
+                      </div>
                     </div>
-                    )
+                  )
                 })()}
-                </div>
+              </div>
             </div>
-            {/* Translations grouped row */}
+
+            {/* Translations */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-12 sm:items-start border border-white/10 bg-white/5 rounded-2xl p-5">
-                <div className="sm:col-span-12">
+              <div className="sm:col-span-12">
                 <p className="text-white font-semibold text-base leading-none">Translations</p>
                 <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-12 sm:gap-x-4">
-                    <div className="grid gap-2 sm:col-span-4">
+                  <div className="grid gap-2 sm:col-span-4">
                     <label className="text-sm text-white/60">English</label>
                     <input
-                        value={wordForm.translation_en}
-                        onChange={(e) => setWF('translation_en', e.target.value)}
-                        className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
+                      value={wordForm.translation_en}
+                      onChange={(e) => setWF('translation_en', e.target.value)}
+                      className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
                     />
-                    </div>
-                    <div className="grid gap-2 sm:col-span-4">
+                    <FieldError msg={wordErrors.translation_en} />
+                  </div>
+
+                  <div className="grid gap-2 sm:col-span-4">
                     <label className="text-sm text-white/60">Ukrainian</label>
                     <input
-                        value={wordForm.translation_ukr}
-                        onChange={(e) => setWF('translation_ukr', e.target.value)}
-                        className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
+                      value={wordForm.translation_ukr}
+                      onChange={(e) => setWF('translation_ukr', e.target.value)}
+                      className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
                     />
-                    </div>
-                    <div className="grid gap-2 sm:col-span-4">
+                    <FieldError msg={wordErrors.translation_ukr} />
+                  </div>
+
+                  <div className="grid gap-2 sm:col-span-4">
                     <label className="text-sm text-white/60">Russian</label>
                     <input
-                        value={wordForm.translation_ru}
-                        onChange={(e) => setWF('translation_ru', e.target.value)}
-                        className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
+                      value={wordForm.translation_ru}
+                      onChange={(e) => setWF('translation_ru', e.target.value)}
+                      className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
                     />
-                    </div>
+                    <FieldError msg={wordErrors.translation_ru} />
+                  </div>
                 </div>
-                </div>
+              </div>
             </div>
+
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-6">
-                <div className="grid gap-2 sm:col-span-2">
+              <div className="grid gap-2 sm:col-span-2">
                 <label className="text-md text-white/80">Picture</label>
                 <ImageUploader
-                    value={wordForm.picture}
-                    resetKey={wordResetKey}
-                    onChange={(url) => setWF('picture', url)}
-                    onError={(msg) => setError(msg)}
-                    upload={async (file) => {
+                  value={wordForm.picture}
+                  resetKey={wordResetKey}
+                  onChange={(url) => setWF('picture', url)}
+                  onError={(msg) => setError(msg)}
+                  upload={async (file) => {
                     const topicName = topics.find((t) => String(t.id) === String(wordForm.topic_id))?.name ?? '-'
                     const baseName = buildWordBase({
-                        lesson: wordForm.lesson,
-                        topicName,
-                        wordSingular: wordForm.word_singular,
+                      lesson: wordForm.lesson,
+                      topicName,
+                      wordSingular: wordForm.word_singular,
+                      wordPlural: wordForm.word_plural,
                     })
                     return await uploadWithIncrement(file, {
-                        entity: 'words',
-                        language: wordForm.language,
-                        baseName,
+                      entity: 'words',
+                      language: wordForm.language,
+                      baseName,
                     })
-                    }}
-                    canUpload={() => {
+                  }}
+                  canUpload={() => {
                     const lessonNum = Number(wordForm.lesson)
                     if (!Number.isFinite(lessonNum) || lessonNum < 1) {
-                        return { ok: false, message: 'Enter correct lesson number.' }
+                      return { ok: false, message: 'Enter correct lesson number.' }
                     }
+
                     if (!wordForm.topic_id.trim()) {
-                        return { ok: false, message: 'Select a topic first.' }
+                      return { ok: false, message: 'Select a topic first.' }
                     }
-                    if (!wordForm.word_singular.trim()) {
-                        return { ok: false, message: 'Enter word (singular) first.' }
+
+                    const singular = wordForm.word_singular.trim()
+                    const plural = wordForm.word_plural.trim()
+
+                    if (!singular) {
+                      return { ok: false, message: 'Enter word (singular) first.' }
                     }
+
+                    if (singular === '-' && !plural) {
+                      return { ok: false, message: 'If singular is "-", enter plural first.' }
+                    }
+
                     return { ok: true }
-                    }}
+                  }}
                 />
-                </div>
-                <div className="grid gap-2 sm:col-span-4">
+                <FieldError msg={wordErrors.picture} />
+              </div>
+
+              <div className="grid gap-2 sm:col-span-4">
                 <label className="text-md text-white/80">Tasks (optional)</label>
                 <textarea
-                    value={wordForm.tasks}
-                    onChange={(e) => setWF('tasks', e.target.value)}
-                    className={[
+                  value={wordForm.tasks}
+                  onChange={(e) => setWF('tasks', e.target.value)}
+                  className={[
                     'h-65 w-full resize-none',
                     'rounded-2xl border border-white/15 bg-white/10 px-4 py-3',
                     'text-white outline-none',
                     'focus:border-white/25 focus:ring-2 focus:ring-white/10',
                     'font-mono text-sm leading-5',
-                    ].join(' ')}
-                    placeholder="[]"
+                  ].join(' ')}
+                  placeholder="[]"
                 />
-                </div>
+                <FieldError msg={wordErrors.tasks} />
+              </div>
             </div>
+
             <button
-                type="submit"
-                disabled={!wordForm.picture.trim()}
-                className="mt-10 w-full rounded-2xl bg-white px-4 py-3.5 text-base font-semibold text-slate-950 shadow-lg shadow-white/10 transition hover:-translate-y-[1px] hover:shadow-xl active:translate-y-0"
+              type="submit"
+              className="w-full rounded-2xl bg-white px-4 py-3.5 text-base font-semibold text-slate-950 shadow-lg shadow-white/10 transition hover:-translate-y-[1px] hover:shadow-xl active:translate-y-0"
             >
-                Save word
+              Save word
             </button>
-            </form>
+          </form>
         ) : (
-            <form onSubmit={submitTopic} className="grid gap-4">
+          /* TOPIC FORM */
+          <form onSubmit={submitTopic} noValidate className="grid gap-4">
             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-12 sm:gap-x-12">
-                <div className="grid gap-2 sm:col-span-3">
+              <div className="grid gap-2 sm:col-span-3">
                 <label className="text-md text-white/80">Language</label>
-                <Select value={topicForm.language} onChange={(v) => setTF('language', v)} required options={languageOptions} placeholder="Language"/>
-                </div>
-                <div className="grid gap-2 sm:col-span-5">
+                <Select
+                  value={topicForm.language}
+                  onChange={(v) => setTF('language', v as Language)}
+                  options={languageOptions}
+                  placeholder="Language"
+                />
+                <FieldError msg={topicErrors.language} />
+              </div>
+
+              <div className="grid gap-2 sm:col-span-5">
                 <label className="text-md text-white/80">Topic name</label>
                 <input
-                    value={topicForm.name}
-                    onChange={(e) => setTF('name', e.target.value)}
-                    className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
-                    required
+                  value={topicForm.name}
+                  onChange={(e) => setTF('name', e.target.value)}
+                  className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
                 />
-                </div>
+                <FieldError msg={topicErrors.name} />
+              </div>
             </div>
+
             <button
-                type="submit"
-                className="mt-10 w-full rounded-2xl bg-white px-4 py-3.5 text-base font-semibold text-slate-950 shadow-lg shadow-white/10 transition hover:-translate-y-[1px] hover:shadow-xl active:translate-y-0"
+              type="submit"
+              className="w-full rounded-2xl bg-white px-4 py-3.5 text-base font-semibold text-slate-950 shadow-lg shadow-white/10 transition hover:-translate-y-[1px] hover:shadow-xl active:translate-y-0"
             >
-                Save topic
+              Save topic
             </button>
-            </form>
+          </form>
         )}
-        </div>
-      </>
-   )
+      </div>
+    </>
+  )
 }

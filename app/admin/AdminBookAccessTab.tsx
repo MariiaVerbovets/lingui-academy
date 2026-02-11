@@ -8,7 +8,7 @@ import {
   Language,
   ProfileRow,
   BookRow,
-  BookAccessRow
+  BookAccessRow,
 } from '@/lib/types'
 
 const languageOptions = [
@@ -19,7 +19,8 @@ const languageOptions = [
 function parseLessons(input: string): number[] {
   const result = new Set<number>()
 
-  input.split(',').forEach(part => {
+
+  input.split(',').forEach((part) => {
     const p = part.trim()
 
     if (/^\d+$/.test(p)) {
@@ -40,6 +41,9 @@ function parseLessons(input: string): number[] {
   return [...result].sort((a, b) => a - b)
 }
 
+type AccessField = 'user_id' | 'language' | 'book_id' | 'lessonsCsv'
+type AccessErrors = Partial<Record<AccessField, string>>
+
 export default function AdminBookAccessTab() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -50,15 +54,43 @@ export default function AdminBookAccessTab() {
   const [grants, setGrants] = useState<BookAccessRow[]>([])
 
   const [form, setForm] = useState<FormState>({
-        user_id: '',
-      language: 'DE' as Language,
-      book_id: '',
-      allow_all: false,
-      lessonsCsv: '',
+    user_id: '',
+    language: 'DE' as Language,
+    book_id: '',
+    allow_all: false,
+    lessonsCsv: '',
   })
 
-  const setF = <K extends keyof FormState>(k: K, v: FormState[K]) =>
-    setForm((p) => ({ ...p, [k]: v }))
+  const [accessErrors, setAccessErrors] = useState<AccessErrors>({})
+  const [submitAttempted, setSubmitAttempted] = useState(false)
+
+  const validateAccessForm = (f: FormState): AccessErrors => {
+    const errs: AccessErrors = {}
+
+    if (!f.user_id) errs.user_id = 'Choose a student'
+    if (!f.language) errs.language = 'Choose a language'
+    if (!f.book_id) errs.book_id = 'Choose a book'
+
+    if (!f.allow_all) {
+      const parsed = parseLessons(f.lessonsCsv)
+      if (parsed.length === 0) {
+        errs.lessonsCsv = 'Enter allowed lessons'
+      }
+    }
+
+
+    return errs
+  }
+
+  const setF = <K extends keyof FormState>(k: K, v: FormState[K]) => {
+    setForm((prev) => {
+      const next = { ...prev, [k]: v }
+      if (submitAttempted) {
+        setAccessErrors(validateAccessForm(next))
+      }
+      return next
+    })
+  }
 
   const bookOptions = useMemo(() => {
     return books
@@ -101,6 +133,13 @@ export default function AdminBookAccessTab() {
     setGrants((accessData ?? []) as BookAccessRow[])
   }
 
+  const scrollToTop = () => {
+    if (typeof window === 'undefined') return
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    })
+  }
+
   useEffect(() => {
     let cancelled = false
 
@@ -131,28 +170,26 @@ export default function AdminBookAccessTab() {
     e.preventDefault()
     setError(null)
     setOk(null)
+    setSubmitAttempted(true)
+    scrollToTop()
 
-    if (!form.user_id) return setError('Select a student.')
-    if (!form.book_id) return setError('Select a book.')
+    const errs = validateAccessForm(form)
+    setAccessErrors(errs)
+    if (Object.keys(errs).length > 0) return
 
-    const payload =
-      form.allow_all
-        ? {
-            user_id: form.user_id,
-            book_id: Number(form.book_id),
-            allow_all: true,
-            allowed_lessons: null,
-          }
-        : {
-            user_id: form.user_id,
-            book_id: Number(form.book_id),
-            allow_all: false,
-            allowed_lessons: parseLessons(form.lessonsCsv),
-          }
-
-    if (!payload.allow_all && (!payload.allowed_lessons || payload.allowed_lessons.length === 0)) {
-      return setError('Enter lessons as CSV, e.g. 1,2,3 (or enable "All lessons").')
-    }
+    const payload = form.allow_all
+      ? {
+          user_id: form.user_id,
+          book_id: Number(form.book_id),
+          allow_all: true,
+          allowed_lessons: null,
+        }
+      : {
+          user_id: form.user_id,
+          book_id: Number(form.book_id),
+          allow_all: false,
+          allowed_lessons: parseLessons(form.lessonsCsv),
+        }
 
     const { error: upErr } = await supabase
       .from('book_access')
@@ -161,6 +198,10 @@ export default function AdminBookAccessTab() {
     if (upErr) return setError(upErr.message)
 
     setOk('Access saved ✅')
+    setAccessErrors({})
+    setF('allow_all', false)
+    setF('lessonsCsv', '')
+    setSubmitAttempted(false)
     await loadAll()
   }
 
@@ -168,7 +209,11 @@ export default function AdminBookAccessTab() {
     setError(null)
     setOk(null)
 
-    const { error: delErr } = await supabase.from('book_access').delete().eq('id', row.id)
+    const { error: delErr } = await supabase
+      .from('book_access')
+      .delete()
+      .eq('id', row.id)
+
     if (delErr) return setError(delErr.message)
 
     setOk('Access removed ✅')
@@ -179,23 +224,34 @@ export default function AdminBookAccessTab() {
     return <p className="pt-10 text-center text-white/60">Loading…</p>
   }
 
+  const FieldError = ({ msg }: { msg?: string }) => (
+    <p
+      className={[
+        'mt-1 min-h-[12px] text-xs leading-4',
+        msg ? 'text-red-300' : 'text-transparent',
+      ].join(' ')}
+    >
+      {msg || '\u00A0'}
+    </p>
+  )
+
   const bookNameById = new Map(books.map((b) => [String(b.id), b.name]))
   const emailById = new Map(profiles.map((p) => [p.id, p.email ?? p.id]))
 
   return (
     <div className="grid gap-8">
       {error && (
-        <div className="inline-flex rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-md text-red-200">
+        <div className="justify-self-start w-fit inline-flex rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-md text-red-200">
           {error}
         </div>
       )}
       {ok && (
-        <div className="inline-flex rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm text-emerald-200">
+        <div className="justify-self-start w-fit inline-flex rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm text-emerald-200">
           {ok}
         </div>
       )}
 
-      <form onSubmit={upsertAccess} className="grid gap-4">
+      <form onSubmit={upsertAccess} noValidate className="grid gap-4">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-12 sm:gap-x-5">
           <div className="grid gap-2 sm:col-span-6">
             <label className="text-md text-white/80">Student</label>
@@ -205,6 +261,7 @@ export default function AdminBookAccessTab() {
               options={userOptions}
               placeholder="- choose -"
             />
+            <FieldError msg={accessErrors.user_id} />
           </div>
 
           <div className="grid gap-2 sm:col-span-2">
@@ -218,6 +275,7 @@ export default function AdminBookAccessTab() {
               options={languageOptions}
               placeholder="Language"
             />
+            <FieldError msg={accessErrors.language} />
           </div>
 
           <div className="grid gap-2 sm:col-span-4">
@@ -228,6 +286,7 @@ export default function AdminBookAccessTab() {
               options={bookOptions}
               placeholder="- choose -"
             />
+            <FieldError msg={accessErrors.book_id} />
           </div>
         </div>
 
@@ -251,6 +310,7 @@ export default function AdminBookAccessTab() {
                 placeholder="1,2,3"
                 className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
               />
+              <FieldError msg={accessErrors.lessonsCsv} />
             </div>
           )}
         </div>
@@ -283,7 +343,8 @@ export default function AdminBookAccessTab() {
                     <span className="text-white/50">Student:</span> {emailById.get(g.user_id)}
                   </div>
                   <div>
-                    <span className="text-white/50">Book:</span> {bookNameById.get(String(g.book_id)) ?? `#${g.book_id}`}
+                    <span className="text-white/50">Book:</span>{' '}
+                    {bookNameById.get(String(g.book_id)) ?? `#${g.book_id}`}
                   </div>
                   <div>
                     <span className="text-white/50">Lessons:</span>{' '}
