@@ -3,20 +3,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import Select from '../components/Select'
-
-type Language = 'DE' | 'PT'
-
-type ProfileRow = { id: string; email: string | null }
-type BookRow = { id: number; name: string; language: Language }
-
-type BookAccessRow = {
-  id: number
-  user_id: string
-  book_id: number
-  allow_all: boolean
-  allowed_lessons: number[] | null
-  created_at: string
-}
+import {
+  FormState,
+  Language,
+  ProfileRow,
+  BookRow,
+  BookAccessRow
+} from '@/lib/types'
 
 const languageOptions = [
   { value: 'DE', label: 'DE' },
@@ -56,15 +49,16 @@ export default function AdminBookAccessTab() {
   const [books, setBooks] = useState<BookRow[]>([])
   const [grants, setGrants] = useState<BookAccessRow[]>([])
 
-  const [form, setForm] = useState({
-    user_id: '',
-    language: 'DE' as Language,
-    book_id: '',
-    allow_all: true,
-    lessonsCsv: '',
+  const [form, setForm] = useState<FormState>({
+        user_id: '',
+      language: 'DE' as Language,
+      book_id: '',
+      allow_all: false,
+      lessonsCsv: '',
   })
 
-  const setF = (k: string, v: any) => setForm((p) => ({ ...p, [k]: v }))
+  const setF = <K extends keyof FormState>(k: K, v: FormState[K]) =>
+    setForm((p) => ({ ...p, [k]: v }))
 
   const bookOptions = useMemo(() => {
     return books
@@ -108,17 +102,23 @@ export default function AdminBookAccessTab() {
   }
 
   useEffect(() => {
+    let cancelled = false
+
     const run = async () => {
       try {
         setLoading(true)
         await loadAll()
       } catch (e: any) {
-        setError(e?.message ?? 'Unknown error')
+        if (!cancelled) setError(e?.message ?? 'Unknown error')
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
+
     run()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   useEffect(() => {
@@ -176,7 +176,7 @@ export default function AdminBookAccessTab() {
   }
 
   if (loading) {
-    return <p className="text-white/60">Loading…</p>
+    return <p className="pt-10 text-center text-white/60">Loading…</p>
   }
 
   const bookNameById = new Map(books.map((b) => [String(b.id), b.name]))
@@ -212,7 +212,7 @@ export default function AdminBookAccessTab() {
             <Select
               value={form.language}
               onChange={(v) => {
-                setF('language', v)
+                setF('language', v as Language)
                 setF('book_id', '')
               }}
               options={languageOptions}

@@ -19,38 +19,46 @@ export default function AdminClient() {
   const [isOwner, setIsOwner] = useState(false)
 
   const goBack = () => {
-    if (from) return router.push(from)
-    if (typeof window !== 'undefined' && window.history.length > 1) router.back()
-    else router.push('/languages')
+    if (from && from.startsWith('/')) return router.push(from)
+    if (typeof window !== 'undefined' && window.history.length > 1) return router.back()
+    router.push('/languages')
   }
 
   useEffect(() => {
+    let cancelled = false
+
     const run = async () => {
-      const { data } = await supabase.auth.getSession()
-      if (!data.session) {
-        router.replace('/login')
-        return
+      try {
+        const { data } = await supabase.auth.getSession()
+        if (!data.session) {
+          router.replace('/login')
+          return
+        }
+
+        const admin = await getIsAdmin()
+        if (!admin) {
+          router.replace('/languages')
+          return
+        }
+
+        const { data: me, error } = await supabase
+          .from('profiles')
+          .select('is_owner')
+          .eq('id', data.session.user.id)
+          .maybeSingle()
+
+        if (!cancelled && !error) setIsOwner(!!me?.is_owner)
+      } catch {
+        if (!cancelled) router.replace('/languages')
+      } finally {
+        if (!cancelled) setLoading(false)
       }
-
-      const admin = await getIsAdmin()
-      if (!admin) {
-        router.replace('/languages')
-        return
-      }
-
-      // owner flag
-      const { data: me, error } = await supabase
-        .from('profiles')
-        .select('is_owner')
-        .eq('id', data.session.user.id)
-        .maybeSingle()
-
-      if (!error) setIsOwner(!!me?.is_owner)
-
-      setLoading(false)
     }
 
     run()
+    return () => {
+      cancelled = true
+    }
   }, [router])
 
   if (loading) {
@@ -125,9 +133,16 @@ export default function AdminClient() {
               </div>
 
               {/* Tab content */}
-              <div className="mt-8">
-                {tab === 'create' ? <AdminCreateContentTab /> : null}
-                {tab === 'access' ? (isOwner ? <AdminBookAccessTab /> : null) : null}
+              <div className="mt-8 min-h-[620px]">
+                <section className={tab === 'create' ? 'block' : 'hidden'} aria-hidden={tab !== 'create'}>
+                  <AdminCreateContentTab />
+                </section>
+
+                {isOwner && (
+                  <section className={tab === 'access' ? 'block' : 'hidden'} aria-hidden={tab !== 'access'}>
+                    <AdminBookAccessTab />
+                  </section>
+                )}
               </div>
             </div>
           </div>

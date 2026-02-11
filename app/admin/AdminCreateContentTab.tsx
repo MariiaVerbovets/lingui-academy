@@ -1,10 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
-import { getIsAdmin } from '@/lib/isAdmin'
 import { uploadWithIncrement } from '@/lib/uploadImage'
 import { buildBookBase, buildWordBase } from '@/lib/filenames'
 import { ImageUploader } from '../components/imageUploader'
@@ -50,23 +47,6 @@ const MODE_ITEMS = [
 ]
 
 export default function AdminCreateContentTab() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const from = searchParams.get('from')
-
-  const goBack = () => {
-    if (from) {
-      router.push(from)
-      return
-    }
-
-    if (typeof window !== 'undefined' && window.history.length > 1) {
-      router.back()
-    } else {
-      router.push('/languages')
-    }
-  }
-
   const [loading, setLoading] = useState(true)
   const [mode, setMode] = useState<Mode>('word')
 
@@ -155,35 +135,37 @@ export default function AdminCreateContentTab() {
   }
 
   const refetchAll = async () => {
-    setError(null)
-    try {
-      await Promise.all([loadBooks(), loadTopics()])
-    } catch (e: any) {
-      setError(e.message ?? 'Unknown error')
-    }
+    const [booksRes, topicsRes] = await Promise.all([
+      supabase.from('books').select('id,name,language,picture').order('name', { ascending: true }),
+      supabase.from('topics').select('id,name,language').order('name', { ascending: true }),
+    ])
+
+    if (booksRes.error) throw booksRes.error
+    if (topicsRes.error) throw topicsRes.error
+
+    setBooks((booksRes.data ?? []) as Book[])
+    setTopics((topicsRes.data ?? []) as Topic[])
   }
 
   useEffect(() => {
+    let cancelled = false
+
     const run = async () => {
-      const { data } = await supabase.auth.getSession()
-      if (!data.session) {
-        router.replace('/login')
-        return
+      try {
+        setLoading(true)
+        await refetchAll()
+      } catch (e: any) {
+        if (!cancelled) setError(e?.message ?? 'Unknown error')
+      } finally {
+        if (!cancelled) setLoading(false)
       }
-
-      const isAdmin = await getIsAdmin()
-      if (!isAdmin) {
-        router.replace('/languages')
-        return
-      }
-
-      await refetchAll()
-      setLoading(false)
     }
 
     run()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router])
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const booksForSelectedLanguage = useMemo(() => books.filter((b) => b.language === wordForm.language), [books, wordForm.language])
   const topicsForSelectedLanguage = useMemo(() => topics.filter((t) => t.language === wordForm.language), [topics, wordForm.language])
@@ -304,6 +286,12 @@ export default function AdminCreateContentTab() {
       return
     }
 
+    const lessonNum = Number(wordForm.lesson)
+    if (!Number.isFinite(lessonNum) || lessonNum < 1) {
+      setError('Enter correct lesson number.')
+      return
+    }
+
     let tasksJson: any
     try {
       tasksJson = JSON.parse(wordForm.tasks || '[]')
@@ -326,7 +314,7 @@ export default function AdminCreateContentTab() {
       translation_ukr: wordForm.translation_ukr.trim() || null,
       translation_en: wordForm.translation_en.trim() || null,
       book_id: Number(wordForm.book_id),
-      lesson: Number(wordForm.lesson),
+      lesson: lessonNum,
       topic_id: Number(wordForm.topic_id),
       picture: wordForm.picture.trim(),
       tasks: tasksJson,
