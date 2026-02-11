@@ -9,7 +9,6 @@ import Select from '../../components/Select'
 
 type TrainMode = 'cards' | 'single' | 'writing'
 
-
 type RawLessonRow = {
   lesson: number
   total_words: number
@@ -83,12 +82,6 @@ useEffect(() => {
 
     try {
       const bookIdNum = Number(bookId)
-
-
-      type BookAccessRow = {
-        allow_all: boolean
-        allowed_lessons: number[] | null
-      }
 
 
       const [{ data: progress, error: progressErr }, { data: accessRows, error: accessErr }] = await Promise.all([
