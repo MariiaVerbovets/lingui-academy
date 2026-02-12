@@ -19,6 +19,9 @@ import {
   getTranslationByNativeLang,
   getModeTitle,
   buildTrainSetupUrl,
+  hasSingleTargetWord,
+  getSingleTargetWord,
+  getSingleTargetArticle
 } from '@/lib/utils'
 import {
   getSessionUserId,
@@ -105,7 +108,7 @@ export default function TrainClient() {
 
   const title = lesson ? `Lesson ${lesson}` : 'Lesson'
   const modeTitle = getModeTitle(mode)
-  const needsArticle = !!current?.article_singular?.trim()
+  const needsArticle = mode === 'single' && !!current && !!getSingleTargetArticle(current)
 
   const translation = current ? getTranslationByNativeLang(current, nativeLang) : null
   const promptText = translation ?? 'No translation'
@@ -114,15 +117,20 @@ export default function TrainClient() {
     if (mode !== 'single') return []
     if (!current) return []
     if (!pool.length) return []
+    if (!hasSingleTargetWord(current)) return []
 
-    const distractorPool = pool.filter((x) => x.id !== current.id && x.word_singular?.trim())
+    const distractorPool = pool.filter((x) => x.id !== current.id && hasSingleTargetWord(x))
     const distractors = pickRandom(distractorPool, 3)
 
     return shuffle([
-      { id: current.id, label: current.word_singular, isCorrect: true },
-      ...distractors.map((d) => ({ id: d.id, label: d.word_singular, isCorrect: false })),
+      { id: current.id, label: getSingleTargetWord(current), isCorrect: true },
+      ...distractors.map((d) => ({
+        id: d.id,
+        label: getSingleTargetWord(d),
+        isCorrect: false,
+      })),
     ])
-  }, [mode, current?.id, current?.word_singular, pool])
+  }, [mode, current, pool])
 
   const finishTraining = () => {
     router.push(buildTrainSetupUrl(bookId, lesson))
@@ -257,9 +265,14 @@ export default function TrainClient() {
           limit: 10,
         })
 
+        const normalizedWords =
+          mode === 'single'
+            ? loadedWords.filter(hasSingleTargetWord)
+            : loadedWords
+
         if (cancelled) return
 
-        setWords(loadedWords)
+        setWords(normalizedWords)
         setIndex(0)
         setCorrectThisSession(0)
         setIsFlipped(false)
@@ -385,11 +398,12 @@ export default function TrainClient() {
 
     const wordCorrect = opt.isCorrect
 
+    const normalizeA = (v: string | null | undefined) => (v ?? '').trim().toLowerCase()
     let articleCorrect = true
     if (needsArticle) {
-      const correctArticleRaw = (current.article_singular ?? '').trim().toLowerCase()
-      const correctArticle = (correctArticleRaw as Article) || null
-      articleCorrect = !!correctArticle && selectedArticle === correctArticle
+      const correctArticle = normalizeA(getSingleTargetArticle(current))
+      const selected = normalizeA(selectedArticle)
+      articleCorrect = !correctArticle || selected === correctArticle
     }
 
     const isCorrect = wordCorrect && articleCorrect
@@ -506,7 +520,7 @@ export default function TrainClient() {
                     answered={answered}
                     selectedOptionId={selectedOptionId}
                     options={options}
-                    onSelectArticle={setSelectedArticle}
+                    onSelectArticle={(a) => setSelectedArticle((a ? (a.trim().toLowerCase() as Article) : null))}
                     onAnswer={answerSingle}
                   />
                 )}

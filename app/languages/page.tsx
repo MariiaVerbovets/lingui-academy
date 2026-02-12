@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { getIsAdmin } from '@/lib/isAdmin'
+import Image from 'next/image'
 import { getNativeLanguage, setNativeLanguage, type NativeLanguage } from '@/lib/nativeLanguage'
 
 
@@ -17,6 +18,44 @@ const NATIVE_ITEMS: Array<{ key: NativeLanguage; title: string; subtitle: string
   { key: 'ru', title: 'Russian', subtitle: 'RU', emoji: '🇷🇺' },
 ]
 
+type LearnItem = {
+  path: '/languages/german' | '/languages/portuguese'
+  title: string
+  subtitle: string
+  flagSrc: string
+  flagAlt: string
+}
+
+const LEARN_ITEMS: LearnItem[] = [
+  {
+    path: '/languages/german',
+    title: 'German',
+    subtitle: 'Deutsch (DE)',
+    flagSrc: '/germany.png',
+    flagAlt: 'Germany flag',
+  },
+  {
+    path: '/languages/portuguese',
+    title: 'Portuguese',
+    subtitle: 'Português (PT)',
+    flagSrc: '/portugal2.png',
+    flagAlt: 'Portugal flag',
+  },
+]
+
+function FlagCircle({ src, alt }: { src: string; alt: string }) {
+  return (
+    <div className="relative h-12 w-12 overflow-hidden rounded-full shrink-0">
+      <Image
+        src={src}
+        alt={alt}
+        fill
+        sizes="40px"
+        className="object-cover"
+      />
+    </div>
+  )
+}
 
 export default function LanguagePage() {
   const router = useRouter()
@@ -151,7 +190,7 @@ export default function LanguagePage() {
       <div className="relative min-h-screen flex flex-col">
         <div className="flex flex-1 items-center justify-center py-10 sm:py-16">
           <div className="w-full max-w-2xl">
-            <div className="min-h-[40vh] rounded-3xl border border-white/10 bg-white/5 py-10 px-6 sm:py-14 sm:px-10 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.6)] backdrop-blur-xl">
+            <div className="rounded-3xl border border-white/10 bg-white/5 py-10 px-6 sm:py-14 sm:px-10 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.6)] backdrop-blur-xl">
               {/* Header */}
               <div className="flex items-center gap-3">
                 <div className="h-11 w-11 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center">
@@ -213,38 +252,24 @@ export default function LanguagePage() {
               {/* ===== NORMAL LANGUAGE SCREEN ===== */}
               {step === 'main' && (
                 <div className="mt-7 grid gap-4 sm:grid-cols-2">
-                  <button
-                    onClick={() => go('/languages/german')}
-                    className="group rounded-3xl border border-white/10 bg-white/5 p-5 text-left shadow-[0_10px_30px_-15px_rgba(0,0,0,0.7)] transition hover:-translate-y-[1px] hover:bg-white/10"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="text-4xl">🇩🇪</span>
-                        <div>
-                          <p className="text-base font-semibold text-white">German</p>
-                          <p className="text-sm text-white/55">Deutsch (DE)</p>
+                  {LEARN_ITEMS.map((it) => (
+                    <button
+                      key={it.path}
+                      onClick={() => go(it.path)}
+                      className="group rounded-3xl border border-white/10 bg-white/5 p-5 text-left shadow-[0_10px_30px_-15px_rgba(0,0,0,0.7)] transition hover:-translate-y-[1px] hover:bg-white/10"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <FlagCircle src={it.flagSrc} alt={it.flagAlt} />
+                          <div>
+                            <p className="text-base font-semibold text-white">{it.title}</p>
+                            <p className="text-sm text-white/55">{it.subtitle}</p>
+                          </div>
                         </div>
+                        <span className="text-white/40 transition group-hover:translate-x-0.5 group-hover:text-white/60">→</span>
                       </div>
-                      <span className="text-white/40 transition group-hover:translate-x-0.5 group-hover:text-white/60">→</span>
-                    </div>
-                  </button>
-
-
-                  <button
-                    onClick={() => go('/languages/portuguese')}
-                    className="group rounded-3xl border border-white/10 bg-white/5 p-5 text-left shadow-[0_10px_30px_-15px_rgba(0,0,0,0.7)] transition hover:-translate-y-[1px] hover:bg-white/10"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="text-4xl">🇵🇹</span>
-                        <div>
-                          <p className="text-base font-semibold text-white">Portuguese</p>
-                          <p className="text-sm text-white/55">Português (PT)</p>
-                        </div>
-                      </div>
-                      <span className="text-white/40 transition group-hover:translate-x-0.5 group-hover:text-white/60">→</span>
-                    </div>
-                  </button>
+                    </button>
+                  ))}
                 </div>
               )}
             </div>

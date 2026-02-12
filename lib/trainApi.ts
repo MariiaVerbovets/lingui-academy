@@ -55,7 +55,7 @@ export async function fetchWordsForMode(params: {
 export async function fetchSinglePool(bookId: number, lesson: number): Promise<PoolRow[]> {
   const { data, error } = await supabase
     .from('words')
-    .select('id, word_singular, article_singular')
+    .select('id, word_singular, article_singular, word_plural')
     .eq('book_id', bookId)
     .eq('lesson', lesson)
 

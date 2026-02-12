@@ -1,8 +1,36 @@
 import type {
   NativeLanguage,
   WordRow,
-  TrainMode
+  TrainMode,
+  WordLike
 } from '@/lib/types'
+
+const hasLetters = (v: string) => /\p{L}/u.test((v ?? '').trim())
+
+export function isDash(v: string | null | undefined) {
+  return (v ?? '').trim() === '-'
+}
+
+function isMissingWord(v: string | null | undefined) {
+  const t = (v ?? '').trim()
+  if (!t) return true
+  if (t === '-' || t === '–' || t === '—' || t === '0') return true
+  if (!hasLetters(t)) return true
+  return false
+}
+
+function cleanArticle(v: string | null | undefined) {
+  const t = (v ?? '').trim()
+  if (!t) return ''
+  if (t === '-' || t === '–' || t === '—' || t === '0') return ''
+  return t
+}
+
+function joinArticleWord(article: string, word: string) {
+  const a = cleanArticle(article)
+  const w = (word ?? '').trim()
+  return a ? `${a} ${w}`.trim() : w
+}
 
 // ***** TRAINING PAGE *****
 export function shuffle<T>(arr: T[]): T[] {
@@ -25,32 +53,64 @@ export function normalizeAnswer(s: string) {
     .replace(/\s+/g, ' ')
 }
 
+/**
+ * Target for single/writing:
+ * - usually singular
+ * - if singular is missing ("", "-", "0", no letters) => plural
+ */
+export function getSingleTargetWord(w: WordLike): string {
+  const singular = (w.word_singular ?? '').trim()
+  const plural = (w.word_plural ?? '').trim()
+  return isMissingWord(singular) ? plural : singular
+}
+
+/**
+ * Article for single/writing target:
+ * - singular article for singular target
+ * - plural article when singular is missing and plural is used
+ */
+export function getSingleTargetArticle(w: WordLike): string {
+  const singular = (w.word_singular ?? '').trim()
+  return isMissingWord(singular)
+    ? cleanArticle(w.article_plural)
+    : cleanArticle(w.article_singular)
+}
+
+export function hasSingleTargetWord(w: WordLike): boolean {
+  return !isMissingWord(getSingleTargetWord(w))
+}
+
 export function formatExpectedWriting(w: WordRow) {
-  const a = (w.article_singular ?? '').trim()
-  const s = w.word_singular.trim()
-  return a ? `${a} ${s}` : s
+  const article = getSingleTargetArticle(w)
+  const word = getSingleTargetWord(w)
+  return article ? `${article} ${word}`.trim() : word
 }
 
+/**
+ * Cards rules:
+ * - if singular exists and plural exists => show both
+ * - if singular missing => show only plural
+ * - if plural missing => show only singular
+ */
 export function formatCardsWord(w: WordRow) {
-  const s = `${w.article_singular ? w.article_singular + ' ' : ''}${w.word_singular}`.trim()
-
+  const singularWord = (w.word_singular ?? '').trim()
   const pluralWord = (w.word_plural ?? '').trim()
-  const pluralArt = (w.article_plural ?? '').trim()
 
-  const hasPlural =
-    pluralWord.length > 0 &&
-    !isDash(pluralWord) &&
-    !isDash(pluralArt) &&
-    pluralWord.toLowerCase() !== w.word_singular.trim().toLowerCase()
+  const hasSingular = !isMissingWord(singularWord)
+  const hasPlural = !isMissingWord(pluralWord)
 
-  if (!hasPlural) return s
+  const singularPart = hasSingular
+    ? joinArticleWord(w.article_singular ?? '', singularWord)
+    : ''
 
-  const p = `${pluralArt ? pluralArt + ' ' : ''}${pluralWord}`.trim()
-  return `${s}, ${p}`
-}
+  const pluralPart = hasPlural
+    ? joinArticleWord(w.article_plural ?? '', pluralWord)
+    : ''
 
-export function isDash(v: string | null | undefined) {
-  return (v ?? '').trim() === '-'
+  if (singularPart && pluralPart) return `${singularPart}, ${pluralPart}`
+  if (singularPart) return singularPart
+  if (pluralPart) return pluralPart
+  return ''
 }
 
 export function getTranslationByNativeLang(w: WordRow, nl: NativeLanguage | null) {

@@ -69,10 +69,10 @@ export function CardsMode({
             'border border-red-400/30 bg-red-500/10',
             'text-red-200',
             'transition hover:bg-red-500/15 hover:-translate-y-[1px]',
-            'focus:outline-none focus:ring-2 focus:ring-red-400/20',
+            'focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400/20',
           ].join(' ')}
-          aria-label="Wrong"
-          title="Wrong"
+          aria-label="Repeat again"
+          title="Repeat again"
         >
           ✕
         </button>
@@ -85,10 +85,10 @@ export function CardsMode({
             'border border-emerald-400/30 bg-emerald-500/10',
             'text-emerald-200',
             'transition hover:bg-emerald-500/15 hover:-translate-y-[1px]',
-            'focus:outline-none focus:ring-2 focus:ring-emerald-400/20',
+            'focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/20',
           ].join(' ')}
-          aria-label="Remembered"
-          title="Remembered"
+          aria-label="Mark remembered"
+          title="Mark remembered"
         >
           ✓
         </button>

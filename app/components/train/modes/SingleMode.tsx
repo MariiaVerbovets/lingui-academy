@@ -1,20 +1,9 @@
 'use client'
 
-import type { Article, Option, WordRow } from '@/lib/types'
 import { ARTICLES } from '@/lib/constants'
+import { getSingleTargetArticle } from '@/lib/utils'
+import { SingleModeProps } from '@/lib/types'
 import { WordImage } from '@/app/components/train/WordImage'
-
-type SingleModeProps = {
-  current: WordRow
-  promptText: string
-  needsArticle: boolean
-  selectedArticle: Article | null
-  answered: boolean
-  selectedOptionId: number | null
-  options: Option[]
-  onSelectArticle: (a: Article) => void
-  onAnswer: (opt: Option) => void
-}
 
 export function SingleMode({
   current,
@@ -27,7 +16,8 @@ export function SingleMode({
   onSelectArticle,
   onAnswer,
 }: SingleModeProps) {
-  const correctArticle = ((current.article_singular ?? '').trim().toLowerCase() as Article) || null
+  const normalizeA = (v: string | null | undefined) => (v ?? '').trim().toLowerCase()
+  const correctArticle = normalizeA(getSingleTargetArticle(current)) || null
 
   return (
     <>
@@ -37,8 +27,11 @@ export function SingleMode({
       {needsArticle && (
         <div className="mt-6 grid grid-cols-3 gap-2">
           {ARTICLES.map((a) => {
-            const isSel = selectedArticle === a
-            const isCorrect = answered && !!correctArticle && a === correctArticle
+            const aNorm = normalizeA(a)
+            const selNorm = normalizeA(selectedArticle)
+
+            const isSel = selNorm === aNorm
+            const isCorrect = answered && !!correctArticle && aNorm === correctArticle
             const isWrongSel = answered && isSel && !isCorrect
 
             const cls = [

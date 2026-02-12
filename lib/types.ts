@@ -13,7 +13,7 @@ export type WordRow = {
   picture: string | null
 }
 
-export type PoolRow = { id: number; word_singular: string; article_singular: string | null }
+export type PoolRow = { id: number; word_singular: string; article_singular: string | null; word_plural: string | null }
 
 export type Option = {
   id: number
@@ -44,4 +44,23 @@ export type BookAccessRow = {
   allow_all: boolean
   allowed_lessons: number[] | null
   created_at: string
+}
+
+export type WordLike = {
+  word_singular?: string | null
+  word_plural?: string | null
+  article_singular?: string | null
+  article_plural?: string | null
+}
+
+export type SingleModeProps = {
+  current: WordRow
+  promptText: string
+  needsArticle: boolean
+  selectedArticle: Article | null
+  answered: boolean
+  selectedOptionId: number | null
+  options: Option[]
+  onSelectArticle: (a: Article) => void
+  onAnswer: (opt: Option) => void
 }
