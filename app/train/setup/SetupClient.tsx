@@ -19,6 +19,8 @@ type RawLessonRow = {
 }
 
 type BookAccessRow = {
+  book_id: number
+  book_name: string | null
   allow_all: boolean
   allowed_lessons: number[] | null
 }
@@ -29,13 +31,12 @@ export default function SetupClient({ bookId }: { bookId: string }) {
   const sp = useSearchParams()
   const lang = sp.get('lang')
   const lessonFromUrl = sp.get('lesson')
-
+  const [bookName, setBookName] = useState<string | null>(null)
 
   const parsedLessonFromUrl =
     lessonFromUrl && Number.isFinite(Number(lessonFromUrl))
       ? Number(lessonFromUrl)
       : null
-
 
   const goBack = () => {
     if (lang) {
@@ -96,7 +97,7 @@ useEffect(() => {
 
       // get_book_access_for_me returns ARRAY, so take first row (or null)
       const accessRow = (accessRows?.[0] ?? null) as BookAccessRow | null
-
+      setBookName((accessRow?.book_name ?? '').trim() || null)
 
       const allow = !!accessRow?.allow_all
       const allowedArr = (accessRow?.allowed_lessons ?? [])
@@ -267,7 +268,7 @@ useEffect(() => {
                   <span className="text-xl">{lang === 'german' ? '🇩🇪' : lang === 'portuguese' ? '🇵🇹' : '🐧'}</span>
                 </div>
                 <div>
-                  <p className="text-sm text-white/60">Lingui Academy</p>
+                  <p className="text-sm text-white/60">{bookName ?? 'Lingui Academy'}</p>
                   <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white">
                     Training setup
                   </h1>

@@ -55,6 +55,18 @@ function randomPraise() {
 export default function TrainClient() {
   const router = useRouter()
   const sp = useSearchParams()
+  const lang = sp.get('lang') ?? 'german'
+
+  const goBack = () => {
+    clearTimer()
+
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back()
+      return
+    }
+
+    router.push(`/train/setup?bookId=${encodeURIComponent(bookId)}&lang=${encodeURIComponent(lang)}`)
+  }
 
   const bookId = sp.get('bookId') ?? ''
   const lesson = sp.get('lesson') ?? ''
@@ -481,6 +493,21 @@ export default function TrainClient() {
       <TrainBackground />
 
       <div className="relative min-h-screen flex flex-col">
+        <button
+          type="button"
+          onClick={goBack}
+          className={[
+            'absolute left-3 top-5 sm:left-6 sm:top-6 z-30',
+            'inline-flex items-center gap-2',
+            'text-md text-white/70 hover:text-white',
+            'transition',
+            'focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 rounded-lg px-1',
+          ].join(' ')}
+          aria-label="Go back"
+        >
+          <span className="text-base" aria-hidden="true">←</span>
+          <span className="hidden sm:inline">Back</span>
+        </button>
         <header className="pt-10 pb-6 text-center">
           <h1 className="text-2xl sm:text-3xl font-semibold text-white tracking-tight">{modeTitle}</h1>
           <p className="mt-2 text-white/60">{title}</p>

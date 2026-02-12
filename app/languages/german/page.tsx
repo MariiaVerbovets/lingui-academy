@@ -219,7 +219,7 @@ export default function GermanPage() {
                     'h-10 w-10 items-center justify-center rounded-full',
                     'border border-white/15 bg-black/30 text-white/80',
                     'backdrop-blur transition hover:bg-black/40 hover:text-white',
-                    'focus:outline-none focus:ring-2 focus:ring-white/20',
+                    'focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20',
                   ].join(' ')}
                   aria-label="Scroll left"
                   title="Scroll left"
@@ -238,7 +238,7 @@ export default function GermanPage() {
                     'h-10 w-10 items-center justify-center rounded-full',
                     'border border-white/15 bg-black/30 text-white/80',
                     'backdrop-blur transition hover:bg-black/40 hover:text-white',
-                    'focus:outline-none focus:ring-2 focus:ring-white/20',
+                    'focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20',
                   ].join(' ')}
                   aria-label="Scroll right"
                   title="Scroll right"

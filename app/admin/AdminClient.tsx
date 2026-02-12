@@ -76,7 +76,7 @@ export default function AdminClient() {
         type="button"
         onClick={goBack}
         className={['absolute left-6 z-30', 'inline-flex items-center gap-2', 'text-md text-white/70 hover:text-white', 'transition'].join(' ')}
-        style={{ top: 'calc(env(safe-area-inset-top) + 0.6rem)' }}
+        style={{ top: 'calc(env(safe-area-inset-top) + 1rem)' }}
       >
         <span className="text-base">←</span>
         Back
