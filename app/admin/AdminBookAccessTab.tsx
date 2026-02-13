@@ -177,31 +177,23 @@ export default function AdminBookAccessTab() {
     setAccessErrors(errs)
     if (Object.keys(errs).length > 0) return
 
-    const payload = form.allow_all
-      ? {
-          user_id: form.user_id,
-          book_id: Number(form.book_id),
-          allow_all: true,
-          allowed_lessons: null,
-        }
-      : {
-          user_id: form.user_id,
-          book_id: Number(form.book_id),
-          allow_all: false,
-          allowed_lessons: parseLessons(form.lessonsCsv),
-        }
+    const lessons = form.allow_all ? [] : parseLessons(form.lessonsCsv)
 
-    const { error: upErr } = await supabase
-      .from('book_access')
-      .upsert(payload, { onConflict: 'user_id,book_id' })
+    const { error: rpcErr } = await supabase.rpc('grant_book_lessons_append', {
+      p_user_id: form.user_id,
+      p_book_id: Number(form.book_id),
+      p_lessons: lessons,
+      p_allow_all: form.allow_all,
+    })
 
-    if (upErr) return setError(upErr.message)
+    if (rpcErr) return setError(rpcErr.message)
 
     setOk('Access saved ✅')
     setAccessErrors({})
     setF('allow_all', false)
     setF('lessonsCsv', '')
     setSubmitAttempted(false)
+
     await loadAll()
   }
 
