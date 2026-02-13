@@ -208,8 +208,8 @@ export default function AdminCreateContentTab() {
     const allowedSing = cfg.singular.map((x) => x.toLowerCase())
     const allowedPl = cfg.plural.map((x) => x.toLowerCase())
 
-    if (needsArticle(singular) && !allowedSing.includes(singArticle)) {
-      errs.article_singular = 'Article required'
+    if (singArticle && !allowedSing.includes(singArticle)) {
+      errs.article_singular = 'Invalid article'
     }
 
     if (needsArticle(plural) && !allowedPl.includes(plArticle)) {
