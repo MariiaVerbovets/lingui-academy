@@ -48,6 +48,12 @@ function parseTrainMode(value: string | null): TrainMode {
   return 'cards'
 }
 
+function parseRequestedLimit(raw: string | null): number {
+  const n = Number(raw)
+  if (!Number.isFinite(n)) return 10
+  return Math.max(1, Math.min(5000, Math.floor(n)))
+}
+
 function randomPraise() {
   return PRAISE_LINES[Math.floor(Math.random() * PRAISE_LINES.length)]
 }
@@ -56,6 +62,7 @@ export default function TrainClient() {
   const router = useRouter()
   const sp = useSearchParams()
   const lang = sp.get('lang') ?? 'german'
+  const requestedLimit = parseRequestedLimit(sp.get('count'))
 
   const goBack = () => {
     clearTimer()
@@ -145,7 +152,7 @@ export default function TrainClient() {
   }, [mode, current, pool])
 
   const finishTraining = () => {
-    router.push(buildTrainSetupUrl(bookId, lesson))
+    router.push(buildTrainSetupUrl(bookId, lesson, lang))
   }
 
   const clearTimer = () => {
@@ -274,7 +281,7 @@ export default function TrainClient() {
           bookId: parsedBookId,
           lesson: parsedLesson,
           mode,
-          limit: 10,
+          limit: requestedLimit,
         })
 
         const normalizedWords =
@@ -309,7 +316,7 @@ export default function TrainClient() {
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bookId, lesson, mode, parsedBookId, parsedLesson, router])
+  }, [bookId, lesson, mode, parsedBookId, parsedLesson, router, requestedLimit])
 
   // ===== NEXT =====
   const goNext = () => {
@@ -373,7 +380,7 @@ export default function TrainClient() {
       }
 
       await resetProgressForLesson(parsedBookId, parsedLesson, mode)
-      router.push(buildTrainSetupUrl(bookId, lesson))
+      router.push(buildTrainSetupUrl(bookId, lesson, lang))
     } catch (e: any) {
       setResetError(e?.message ?? 'Failed to reset progress')
     } finally {

@@ -127,10 +127,11 @@ export function getModeTitle(mode: TrainMode): string {
   return 'Writing'
 }
 
-export function buildTrainSetupUrl(bookId: string, lesson: string): string {
+export function buildTrainSetupUrl(bookId: string, lesson: string, lang: string): string {
   const params = new URLSearchParams({
     bookId: String(bookId),
     lesson: String(lesson),
+    lang: String(lang)
   })
   return `/train/setup?${params.toString()}`
 }
