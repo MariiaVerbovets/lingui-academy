@@ -5,10 +5,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { getIsAdmin } from '@/lib/isAdmin'
-
+import { FlagCircle } from '../page'
 
 type Language = 'DE' | 'PT'
-
 
 type Book = {
   id: number
@@ -17,7 +16,6 @@ type Book = {
   picture?: string | null
 }
 
-
 export default function GermanPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
@@ -25,10 +23,8 @@ export default function GermanPage() {
   const [error, setError] = useState<string | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
 
-
   // horizontal scroller
   const scrollerRef = useRef<HTMLDivElement | null>(null)
-
 
   const scrollByCards = (dir: 1 | -1) => {
     const el = scrollerRef.current
@@ -181,9 +177,7 @@ export default function GermanPage() {
             <div className="rounded-3xl border border-white/10 bg-white/5 py-10 px-6 sm:py-14 sm:px-10 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.6)] backdrop-blur-xl">
               {/* Header */}
               <div className="flex items-center gap-3">
-                <div className="h-11 w-11 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center">
-                  <span className="text-xl">🇩🇪</span>
-                </div>
+                <FlagCircle src='/germany.png' alt='Germany flag' />
                 <div>
                   <p className="text-sm text-white/60">Lingui Academy</p>
                   <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white">

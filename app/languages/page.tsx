@@ -43,7 +43,7 @@ const LEARN_ITEMS: LearnItem[] = [
   },
 ]
 
-function FlagCircle({ src, alt }: { src: string; alt: string }) {
+export function FlagCircle({ src, alt }: { src: string; alt: string }) {
   return (
     <div className="relative h-12 w-12 overflow-hidden rounded-full shrink-0">
       <Image

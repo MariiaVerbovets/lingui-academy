@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { getIsAdmin } from '@/lib/isAdmin'
 import Select from '../../components/Select'
+import { FlagCircle } from '../../languages/page'
 
 type TrainMode = 'cards' | 'single' | 'writing'
 
@@ -49,8 +50,6 @@ export default function SetupClient({ bookId }: { bookId: string }) {
 
   const [loading, setLoading] = useState(true)
   const [rows, setRows] = useState<RawLessonRow[]>([])
-  const [allowAll, setAllowAll] = useState(false)
-  const [allowedLessons, setAllowedLessons] = useState<number[]>([])
   const [selectedLesson, setSelectedLesson] = useState<number | null>(null)
   const [mode, setMode] = useState<TrainMode>('cards')
   const [error, setError] = useState<string | null>(null)
@@ -103,11 +102,6 @@ useEffect(() => {
       const allowedArr = (accessRow?.allowed_lessons ?? [])
         .map((x) => Number(x))
         .filter((x) => Number.isFinite(x))
-
-
-      setAllowAll(allow)
-      setAllowedLessons(allowedArr)
-
 
       const raw = (progress ?? []) as any[]
       const normalized: RawLessonRow[] = raw.map((r) => ({
@@ -264,8 +258,11 @@ useEffect(() => {
           <div className="w-full max-w-2xl">
             <div className="min-h-[40vh] rounded-3xl border border-white/15 bg-white/10 backdrop-blur-2xl py-10 px-6 sm:py-14 sm:px-10 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.7)]">
               <div className="flex items-center gap-3">
-                <div className="h-11 w-11 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center">
-                  <span className="text-xl">{lang === 'german' ? '🇩🇪' : lang === 'portuguese' ? '🇵🇹' : '🐧'}</span>
+                <div className="flex items-center gap-3">
+                    <FlagCircle
+                      src={lang === 'german' ? '/germany.png' : '/portugal2.png'}
+                      alt='flag'
+                    />
                 </div>
                 <div>
                   <p className="text-sm text-white/60">{bookName ?? 'Lingui Academy'}</p>
