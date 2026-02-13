@@ -124,7 +124,11 @@ export function getTranslationByNativeLang(w: WordRow, nl: NativeLanguage | null
 export function getModeTitle(mode: TrainMode): string {
   if (mode === 'cards') return 'Cards review'
   if (mode === 'single') return 'Single choice'
-  return 'Writing'
+  if (mode === 'writing') return 'Writing'
+  if (mode === 'articles') return 'Articles'
+  if (mode === 'plural') return 'Plural forms'
+  if (mode === 'match') return 'Matching'
+  return 'Training'
 }
 
 export function buildTrainSetupUrl(bookId: string, lesson: string, lang: string): string {
@@ -134,4 +138,31 @@ export function buildTrainSetupUrl(bookId: string, lesson: string, lang: string)
     lang: String(lang)
   })
   return `/train/setup?${params.toString()}`
+}
+
+// Articles mode
+export function hasArticlesTask(w: WordLike): boolean {
+  const singular = (w.word_singular ?? '').trim()
+  const plural = (w.word_plural ?? '').trim()
+  const articleS = (w.article_singular ?? '').trim()
+  const articleP = (w.article_plural ?? '').trim()
+
+  if (singular !== '-') {
+    return singular.length > 0 && articleS.length > 0
+  }
+
+  return plural.length > 0 && articleP.length > 0
+}
+
+export function getArticlesTargetWord(w: WordLike): string {
+  const singular = (w.word_singular ?? '').trim()
+  const plural = (w.word_plural ?? '').trim()
+  return singular === '-' ? plural : singular
+}
+
+export function getArticlesTargetArticle(w: WordLike): string {
+  const singular = (w.word_singular ?? '').trim()
+  return singular === '-'
+    ? (w.article_plural ?? '').trim()
+    : (w.article_singular ?? '').trim()
 }

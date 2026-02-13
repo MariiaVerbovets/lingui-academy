@@ -7,14 +7,18 @@ import { getIsAdmin } from '@/lib/isAdmin'
 import Select from '../../components/Select'
 import { FlagCircle } from '../../languages/page'
 
-type TrainMode = 'cards' | 'single' | 'writing'
+type TrainMode = 'cards' | 'single' | 'writing' | 'articles' | 'plural' | 'match'
 
 type RawLessonRow = {
   lesson: number
   total_words: number
+  total_articles_words: number
+  total_plural_words: number
   cards_percent: number
   single_percent: number
   writing_percent: number
+  articles_percent: number
+  plural_percent: number
   overall_percent: number
 }
 
@@ -129,9 +133,13 @@ export default function SetupClient({ bookId }: { bookId: string }) {
         const normalized: RawLessonRow[] = raw.map((r) => ({
           lesson: Number(r.lesson),
           total_words: Number(r.total_words ?? 0),
+          total_articles_words: Number(r.total_articles_words ?? 0),
+          total_plural_words: Number(r.total_plural_words ?? 0),
           cards_percent: Number(r.cards_percent ?? 0),
           single_percent: Number(r.single_percent ?? 0),
           writing_percent: Number(r.writing_percent ?? 0),
+          articles_percent: Number(r.articles_percent ?? 0),
+          plural_percent: Number(r.plural_percent ?? 0),
           overall_percent: Number(r.overall_percent ?? 0),
         }))
 
@@ -173,20 +181,49 @@ export default function SetupClient({ bookId }: { bookId: string }) {
   const cardsPct = selectedRow?.cards_percent ?? 0
   const singlePct = selectedRow?.single_percent ?? 0
   const writingPct = selectedRow?.writing_percent ?? 0
+  const articlesPct = selectedRow?.articles_percent ?? 0
+  const pluralPct = selectedRow?.plural_percent ?? 0
+  const hasNounsInLesson = (selectedRow?.total_articles_words ?? 0) > 0 || (selectedRow?.total_plural_words ?? 0) > 0
+
+  useEffect(() => {
+    if (!selectedRow) return
+    if (!hasNounsInLesson && (mode === 'articles' || mode === 'plural')) {
+      setMode('cards')
+    }
+  }, [selectedRow, hasNounsInLesson, mode])
 
   const canStart = useMemo(() => {
-    return (
+    const baseOk =
       !!bookId &&
       selectedLesson !== null &&
-      (mode === 'cards' || mode === 'single' || mode === 'writing')
-    )
-  }, [bookId, selectedLesson, mode])
+      (mode === 'cards' ||
+        mode === 'single' ||
+        mode === 'writing' ||
+        mode === 'articles' ||
+        mode === 'plural')
+
+    if (!baseOk) return false
+
+    if ((mode === 'articles' || mode === 'plural') && !hasNounsInLesson) {
+      return false
+    }
+
+    return true
+  }, [bookId, selectedLesson, mode, hasNounsInLesson])
 
   const start = () => {
     if (!canStart) return
 
-    const lessonTotal = selectedRow?.total_words ?? 0
-    const effectiveCount = allQuestions ? Math.max(1, lessonTotal || count) : count
+    const lessonTotal =
+      mode === 'articles'
+        ? (selectedRow?.total_articles_words ?? 0)
+        : mode === 'plural'
+        ? (selectedRow?.total_plural_words ?? 0)
+        : (selectedRow?.total_words ?? 0)
+
+    const effectiveCount = allQuestions
+      ? Math.max(1, lessonTotal || count)
+      : count
 
     const params = new URLSearchParams({
       bookId: String(bookId),
@@ -366,6 +403,49 @@ export default function SetupClient({ bookId }: { bookId: string }) {
                   >
                     Writing <span className="opacity-60">({writingPct}%)</span>
                   </button>
+
+                  {hasNounsInLesson && (
+                    <button
+                      type="button"
+                      onClick={() => setMode('articles')}
+                      className={[
+                        'rounded-2xl px-4 py-3 text-sm font-semibold transition',
+                        mode === 'articles'
+                          ? 'bg-white text-slate-950 shadow-lg shadow-white/10'
+                          : 'bg-white/10 text-white/80 border border-white/10 hover:bg-white/15',
+                      ].join(' ')}
+                    >
+                      Articles <span className="opacity-60">({articlesPct}%)</span>
+                    </button>
+                  )}
+
+{/*                   {hasNounsInLesson && (
+                    <button
+                      type="button"
+                      onClick={() => setMode('plural')}
+                      className={[
+                        'rounded-2xl px-4 py-3 text-sm font-semibold transition',
+                        mode === 'plural'
+                          ? 'bg-white text-slate-950 shadow-lg shadow-white/10'
+                          : 'bg-white/10 text-white/80 border border-white/10 hover:bg-white/15',
+                      ].join(' ')}
+                    >
+                      Plural forms <span className="opacity-60">({pluralPct}%)</span>
+                    </button>
+                  )} */}
+
+                  <button
+                    type="button"
+                    onClick={() => setMode('match')}
+                    className={[
+                      'rounded-2xl px-4 py-3 text-sm font-semibold transition',
+                      mode === 'match'
+                        ? 'bg-white text-slate-950 shadow-lg shadow-white/10'
+                        : 'bg-white/10 text-white/80 border border-white/10 hover:bg-white/15',
+                    ].join(' ')}
+                  >
+                    Matching
+                  </button>
                 </div>
               </div>
 
@@ -379,12 +459,12 @@ export default function SetupClient({ bookId }: { bookId: string }) {
                     flex gap-3 sm:items-center justify-between
                   "
                 >
-                  <label className="min-w-0 flex items-center gap-2 cursor-pointer select-none">
+                  <label className="min-w-0 flex items-center gap-3 cursor-pointer select-none">
                     <input
                       type="checkbox"
                       checked={allQuestions}
                       onChange={(e) => setAllQuestions(e.target.checked)}
-                      className="h-4 w-4 accent-violet-400 cursor-pointer"
+                      className="h-4.5 w-4.5 accent-violet-400 cursor-pointer"
                     />
                     <span className="min-w-0 text-md text-white/80 truncate sm:hidden">All</span>
                     <span className="min-w-0 text-md text-white/80 truncate hidden sm:inline">All words</span>

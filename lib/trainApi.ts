@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabaseClient'
 import type { NativeLanguage, PoolRow, TrainMode, WordRow } from '@/lib/types'
 
-type AnswerMode = Extract<TrainMode, 'single' | 'writing'>
+type AnswerMode = Extract<TrainMode, 'single' | 'writing' | 'articles' | 'plural' | 'match'>
 
 export async function getSessionUserId(): Promise<string | null> {
   const { data } = await supabase.auth.getSession()
@@ -63,12 +63,20 @@ export async function fetchSinglePool(bookId: number, lesson: number): Promise<P
   return (data ?? []) as PoolRow[]
 }
 
-export async function checkLessonCleared(bookId: number, lesson: number, mode: TrainMode): Promise<boolean> {
+export async function checkLessonCleared(
+  bookId: number,
+  lesson: number,
+  mode: TrainMode
+): Promise<boolean> {
   const words = await fetchWordsForMode({ bookId, lesson, mode, limit: 1 })
   return words.length === 0
 }
 
-export async function resetProgressForLesson(bookId: number, lesson: number, mode: TrainMode): Promise<void> {
+export async function resetProgressForLesson(
+  bookId: number,
+  lesson: number,
+  mode: TrainMode
+): Promise<void> {
   const { error } = await supabase.rpc('reset_progress_for_lesson', {
     p_book_id: bookId,
     p_lesson: lesson,
@@ -85,7 +93,11 @@ export async function markWordLearnedCards(wordId: number): Promise<void> {
   if (error) throw error
 }
 
-export async function applyWordAnswer(wordId: number, mode: AnswerMode, correct: boolean): Promise<void> {
+export async function applyWordAnswer(
+  wordId: number,
+  mode: AnswerMode,
+  correct: boolean
+): Promise<void> {
   const { error } = await supabase.rpc('apply_word_answer', {
     p_word_id: wordId,
     p_mode: mode,

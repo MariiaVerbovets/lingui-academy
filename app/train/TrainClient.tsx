@@ -21,7 +21,9 @@ import {
   buildTrainSetupUrl,
   hasSingleTargetWord,
   getSingleTargetWord,
-  getSingleTargetArticle
+  getSingleTargetArticle,
+  hasArticlesTask,
+  getArticlesTargetArticle,
 } from '@/lib/utils'
 import {
   getSessionUserId,
@@ -42,9 +44,12 @@ import { TrainDoneState } from '@/app/components/train/states/TrainDoneState'
 import { CardsMode } from '@/app/components/train/modes/CardsMode'
 import { SingleMode } from '@/app/components/train/modes/SingleMode'
 import { WritingMode } from '@/app/components/train/modes/WritingMode'
+import { ArticlesMode } from '@/app/components/train/modes/ArticlesMode'
 
 function parseTrainMode(value: string | null): TrainMode {
-  if (value === 'cards' || value === 'single' || value === 'writing') return value
+  if (value === 'cards' || value === 'single' || value === 'writing' || value === 'articles' || value === 'plural' || value === 'match') {
+    return value
+  }
   return 'cards'
 }
 
@@ -58,22 +63,15 @@ function randomPraise() {
   return PRAISE_LINES[Math.floor(Math.random() * PRAISE_LINES.length)]
 }
 
+const normalizeA = (v: string | null | undefined) => (v ?? '').trim().toLowerCase()
+
 export default function TrainClient() {
   const router = useRouter()
   const sp = useSearchParams()
+
   const lang = sp.get('lang') ?? 'german'
   const requestedLimit = parseRequestedLimit(sp.get('count'))
 
-  const goBack = () => {
-    clearTimer()
-
-    if (typeof window !== 'undefined' && window.history.length > 1) {
-      router.back()
-      return
-    }
-
-    router.push(`/train/setup?bookId=${encodeURIComponent(bookId)}&lang=${encodeURIComponent(lang)}`)
-  }
 
   const bookId = sp.get('bookId') ?? ''
   const lesson = sp.get('lesson') ?? ''
@@ -107,7 +105,7 @@ export default function TrainClient() {
   const [resetBusy, setResetBusy] = useState(false)
   const [resetError, setResetError] = useState<string | null>(null)
 
-  // ===== SINGLE CHOICE state =====
+  // ===== SINGLE / ARTICLES shared answer state =====
   const [pool, setPool] = useState<PoolRow[]>([])
   const [answered, setAnswered] = useState(false)
   const [selectedOptionId, setSelectedOptionId] = useState<number | null>(null)
@@ -168,6 +166,18 @@ export default function TrainClient() {
     timerRef.current = window.setTimeout(() => {
       goNext()
     }, delay)
+  }
+
+  const goBack = () => {
+    clearTimer()
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back()
+      return
+    }
+
+    router.push(
+      `/train/setup?bookId=${encodeURIComponent(bookId)}&lang=${encodeURIComponent(lang)}`
+    )
   }
 
   const resetSingleRoundState = () => {
@@ -287,6 +297,8 @@ export default function TrainClient() {
         const normalizedWords =
           mode === 'single'
             ? loadedWords.filter(hasSingleTargetWord)
+            : mode === 'articles'
+            ? loadedWords.filter(hasArticlesTask)
             : loadedWords
 
         if (cancelled) return
@@ -417,7 +429,6 @@ export default function TrainClient() {
 
     const wordCorrect = opt.isCorrect
 
-    const normalizeA = (v: string | null | undefined) => (v ?? '').trim().toLowerCase()
     let articleCorrect = true
     if (needsArticle) {
       const correctArticle = normalizeA(getSingleTargetArticle(current))
@@ -430,6 +441,29 @@ export default function TrainClient() {
 
     try {
       await applyWordAnswer(current.id, 'single', isCorrect)
+    } catch (e: any) {
+      setError(e?.message ?? 'Failed to save progress')
+    }
+
+    scheduleNext(isCorrect)
+  }
+
+  // ===== ARTICLES: answer =====
+  const answerArticles = async (article: Article) => {
+    if (!current) return
+    if (answered) return
+
+    setAnswered(true)
+    setSelectedArticle(article)
+
+    const correctArticle = normalizeA(getArticlesTargetArticle(current))
+    const selected = normalizeA(article)
+    const isCorrect = !!correctArticle && selected === correctArticle
+
+    if (isCorrect) setCorrectThisSession((v) => v + 1)
+
+    try {
+      await applyWordAnswer(current.id, 'articles', isCorrect)
     } catch (e: any) {
       setError(e?.message ?? 'Failed to save progress')
     }
@@ -498,7 +532,6 @@ export default function TrainClient() {
   return (
     <main className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 px-4">
       <TrainBackground />
-
       <div className="relative min-h-screen flex flex-col">
         <button
           type="button"
@@ -517,9 +550,8 @@ export default function TrainClient() {
         </button>
         <header className="pt-10 pb-6 text-center">
           <h1 className="text-2xl sm:text-3xl font-semibold text-white tracking-tight">{modeTitle}</h1>
-          <p className="mt-2 text-white/60">{title}</p>
+          <p className="mt-1 text-white/60">{title}</p>
         </header>
-
         <section className="flex-1 flex items-start justify-center pb-10">
           <div className="w-full max-w-md rounded-3xl border border-white/10 bg-white/5 p-6 sm:p-8 backdrop-blur-xl shadow-[0_20px_60px_-20px_rgba(0,0,0,0.6)]">
             {error && (
@@ -554,8 +586,19 @@ export default function TrainClient() {
                     answered={answered}
                     selectedOptionId={selectedOptionId}
                     options={options}
-                    onSelectArticle={(a) => setSelectedArticle((a ? (a.trim().toLowerCase() as Article) : null))}
+                    onSelectArticle={(a) =>
+                      setSelectedArticle(a ? (a.trim().toLowerCase() as Article) : null)
+                    }
                     onAnswer={answerSingle}
+                  />
+                )}
+
+                {mode === 'articles' && (
+                  <ArticlesMode
+                    current={current}
+                    answered={answered}
+                    selectedArticle={selectedArticle}
+                    onAnswer={answerArticles}
                   />
                 )}
 
@@ -575,7 +618,6 @@ export default function TrainClient() {
             )}
           </div>
         </section>
-
         <footer className="pb-6 text-center text-xs text-white/35">Lingui Academy</footer>
       </div>
     </main>
