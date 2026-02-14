@@ -24,6 +24,9 @@ import {
   getSingleTargetArticle,
   hasArticlesTask,
   getArticlesTargetArticle,
+  hasPluralTask,
+  formatExpectedPlural,
+  formatPluralPrompt,
 } from '@/lib/utils'
 import {
   getSessionUserId,
@@ -299,6 +302,8 @@ export default function TrainClient() {
             ? loadedWords.filter(hasSingleTargetWord)
             : mode === 'articles'
             ? loadedWords.filter(hasArticlesTask)
+            : mode === 'plural'
+            ? loadedWords.filter(hasPluralTask)
             : loadedWords
 
         if (cancelled) return
@@ -345,7 +350,7 @@ export default function TrainClient() {
       return next
     })
 
-    if (mode === 'writing') {
+    if (mode === 'writing' || mode === 'plural') {
       window.setTimeout(() => inputRef.current?.focus(), 50)
     }
   }
@@ -471,27 +476,32 @@ export default function TrainClient() {
     scheduleNext(isCorrect)
   }
 
-  // ===== WRITING: submit =====
-  const submitWriting = async () => {
-    if (!current) return
-    if (writingChecked) return
+  // ===== WRITING / PLURAL: submit =====
+const submitTypedAnswer = async () => {
+  if (!current) return
+  if (writingChecked) return
+  if (mode !== 'writing' && mode !== 'plural') return
 
-    const expected = normalizeAnswer(formatExpectedWriting(current))
-    const given = normalizeAnswer(writingValue)
-    const isCorrect = expected.length > 0 && given === expected
+  const expected =
+    mode === 'plural'
+      ? normalizeAnswer(formatExpectedPlural(current))
+      : normalizeAnswer(formatExpectedWriting(current))
 
-    setWritingChecked(true)
-    setWritingWasCorrect(isCorrect)
-    if (isCorrect) setCorrectThisSession((v) => v + 1)
+  const given = normalizeAnswer(writingValue)
+  const isCorrect = expected.length > 0 && given === expected
 
-    try {
-      await applyWordAnswer(current.id, 'writing', isCorrect)
-    } catch (e: any) {
-      setError(e?.message ?? 'Failed to save progress')
-    }
+  setWritingChecked(true)
+  setWritingWasCorrect(isCorrect)
+  if (isCorrect) setCorrectThisSession((v) => v + 1)
 
-    scheduleNext(isCorrect)
+  try {
+    await applyWordAnswer(current.id, mode, isCorrect)
+  } catch (e: any) {
+    setError(e?.message ?? 'Failed to save progress')
   }
+
+  scheduleNext(isCorrect)
+}
 
   // ===== RENDER =====
   if (loading || nativeLangLoading) {
@@ -602,16 +612,17 @@ export default function TrainClient() {
                   />
                 )}
 
-                {mode === 'writing' && (
+                {(mode === 'writing' || mode === 'plural') && (
                   <WritingMode
+                    mode={mode}
                     current={current}
-                    promptText={promptText}
+                    promptText={mode === 'plural' ? formatPluralPrompt(current, promptText) : promptText}
                     inputRef={inputRef}
                     writingValue={writingValue}
                     writingChecked={writingChecked}
                     writingWasCorrect={writingWasCorrect}
                     onChange={setWritingValue}
-                    onSubmit={submitWriting}
+                    onSubmit={submitTypedAnswer}
                   />
                 )}
               </>

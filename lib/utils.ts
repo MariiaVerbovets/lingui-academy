@@ -166,3 +166,26 @@ export function getArticlesTargetArticle(w: WordLike): string {
     ? (w.article_plural ?? '').trim()
     : (w.article_singular ?? '').trim()
 }
+
+// Plural forms mode
+export function hasPluralTask(w: WordLike): boolean {
+  const plural = (w.word_plural ?? '').trim()
+  return !isMissingWord(plural)
+}
+
+export function formatPluralPrompt(w: WordLike, fallbackPrompt?: string | null): string {
+  const singular = (w.word_singular ?? '').trim()
+
+  if (isMissingWord(singular)) {
+    return (fallbackPrompt ?? '').trim()
+  }
+
+  const articleS = cleanArticle(w.article_singular)
+  return articleS ? `${articleS} ${singular}`.trim() : singular
+}
+
+export function formatExpectedPlural(w: WordLike): string {
+  const plural = (w.word_plural ?? '').trim()
+  const articleP = cleanArticle(w.article_plural)
+  return articleP ? `${articleP} ${plural}`.trim() : plural
+}

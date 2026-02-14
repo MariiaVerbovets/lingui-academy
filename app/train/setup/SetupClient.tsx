@@ -419,7 +419,7 @@ export default function SetupClient({ bookId }: { bookId: string }) {
                     </button>
                   )}
 
-{/*                   {hasNounsInLesson && (
+                  {hasNounsInLesson && (
                     <button
                       type="button"
                       onClick={() => setMode('plural')}
@@ -432,9 +432,9 @@ export default function SetupClient({ bookId }: { bookId: string }) {
                     >
                       Plural forms <span className="opacity-60">({pluralPct}%)</span>
                     </button>
-                  )} */}
+                  )}
 
-                  <button
+{/*                   <button
                     type="button"
                     onClick={() => setMode('match')}
                     className={[
@@ -445,7 +445,7 @@ export default function SetupClient({ bookId }: { bookId: string }) {
                     ].join(' ')}
                   >
                     Matching
-                  </button>
+                  </button> */}
                 </div>
               </div>
 

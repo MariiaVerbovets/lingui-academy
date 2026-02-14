@@ -2,10 +2,11 @@
 
 import { useMemo, type RefObject } from 'react'
 import type { WordRow } from '@/lib/types'
-import { formatExpectedWriting } from '@/lib/utils'
+import { formatExpectedWriting, formatExpectedPlural } from '@/lib/utils'
 import { WordImage } from '@/app/components/train/WordImage'
 
 type WritingModeProps = {
+  mode: 'writing' | 'plural'
   current: WordRow
   promptText: string
   inputRef: RefObject<HTMLInputElement | null>
@@ -17,6 +18,7 @@ type WritingModeProps = {
 }
 
 export function WritingMode({
+  mode,
   current,
   promptText,
   inputRef,
@@ -26,7 +28,10 @@ export function WritingMode({
   onChange,
   onSubmit,
 }: WritingModeProps) {
-  const expectedWriting = useMemo(() => formatExpectedWriting(current), [current])
+  const expectedWriting = useMemo(
+    () => (mode === 'plural' ? formatExpectedPlural(current) : formatExpectedWriting(current)),
+    [mode, current]
+  )
 
   const specialChars = useMemo(() => {
     const expectedText = String(expectedWriting ?? '').trim().normalize('NFC')
@@ -35,10 +40,7 @@ export function WritingMode({
     const result: string[] = []
 
     for (const ch of expectedText) {
-      // только буквы
       if (!/\p{L}/u.test(ch)) continue
-
-      // "спец" = не базовая латиница A-Z
       if (/^[A-Za-z]$/.test(ch)) continue
 
       if (!seen.has(ch)) {
