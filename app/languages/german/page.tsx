@@ -1,6 +1,5 @@
 'use client'
 
-
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
@@ -23,7 +22,6 @@ export default function GermanPage() {
   const [error, setError] = useState<string | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
 
-  // horizontal scroller
   const scrollerRef = useRef<HTMLDivElement | null>(null)
 
   const scrollByCards = (dir: 1 | -1) => {
@@ -33,17 +31,14 @@ export default function GermanPage() {
     el.scrollBy({ left: amount * dir, behavior: 'smooth' })
   }
 
-
   // wheel -> horizontal scroll (PC mouse)
   useEffect(() => {
     const el = scrollerRef.current
     if (!el) return
 
-
     const onWheel = (e: WheelEvent) => {
       // if trackpad already sends horizontal, don't interfere
       if (Math.abs(e.deltaX) > 0) return
-
 
       if (Math.abs(e.deltaY) > 0) {
         e.preventDefault()
@@ -51,15 +46,12 @@ export default function GermanPage() {
       }
     }
 
-
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
   }, [])
 
-
   useEffect(() => {
     setLoading(true)
-
 
     const run = async () => {
       const { data } = await supabase.auth.getSession()
@@ -92,9 +84,7 @@ export default function GermanPage() {
     run()
   }, [router])
 
-
   const hasBooks = useMemo(() => books.length > 0, [books])
-
 
   if (loading) {
     return (
@@ -103,7 +93,6 @@ export default function GermanPage() {
       </main>
     )
   }
-
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 px-4">
@@ -128,7 +117,6 @@ export default function GermanPage() {
               }}
             />
 
-
             {/* tooltip */}
             <span
               className={[
@@ -145,7 +133,6 @@ export default function GermanPage() {
         </div>
       )}
 
-
       {/* Back button OUTSIDE card */}
       <button
         type="button"
@@ -161,7 +148,6 @@ export default function GermanPage() {
         Back
       </button>
 
-
       {/* Soft background blobs */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -top-28 left-1/2 h-[460px] w-[460px] -translate-x-1/2 rounded-full bg-fuchsia-500/20 blur-3xl" />
@@ -169,7 +155,6 @@ export default function GermanPage() {
         <div className="absolute bottom-0 -right-24 h-[460px] w-[460px] rounded-full bg-emerald-400/15 blur-3xl" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.10),transparent_55%)]" />
       </div>
-
 
       <div className="relative min-h-screen flex flex-col">
         <div className="flex flex-1 items-center justify-center py-10 sm:py-16">
@@ -186,13 +171,11 @@ export default function GermanPage() {
                 </div>
               </div>
 
-
               {error && (
                 <div className="mt-6 rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-md text-red-200">
                   {error}
                 </div>
               )}
-
 
               {!error && !hasBooks && (
                 <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4 text-md text-white/60">
@@ -200,46 +183,47 @@ export default function GermanPage() {
                 </div>
               )}
 
-
               {/* Books row with arrows + wheel horizontal scroll */}
               <div className="mt-6 relative md:px-18">
-                {/* left arrow (PC) */}
-                <button
-                  type="button"
-                  onClick={() => scrollByCards(-1)}
-                  className={[
-                    'hidden md:flex',
-                    'absolute left-1 top-1/2 -translate-y-12 z-20',
-                    'h-10 w-10 items-center justify-center rounded-full',
-                    'border border-white/15 bg-black/30 text-white/80',
-                    'backdrop-blur transition hover:bg-black/40 hover:text-white',
-                    'focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20',
-                  ].join(' ')}
-                  aria-label="Scroll left"
-                  title="Scroll left"
-                >
-                  ←
-                </button>
+                {books.length > 0 && (
+                  <>
+                    {/* left arrow (PC) */}
+                    <button
+                      type="button"
+                      onClick={() => scrollByCards(-1)}
+                      className={[
+                        'hidden md:flex',
+                        'absolute left-1 top-1/2 -translate-y-12 z-20',
+                        'h-10 w-10 items-center justify-center rounded-full',
+                        'border border-white/15 bg-black/30 text-white/80',
+                        'backdrop-blur transition hover:bg-black/40 hover:text-white',
+                        'focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20',
+                      ].join(' ')}
+                      aria-label="Scroll left"
+                      title="Scroll left"
+                    >
+                      ←
+                    </button>
 
-
-                {/* right arrow (PC) */}
-                <button
-                  type="button"
-                  onClick={() => scrollByCards(1)}
-                  className={[
-                    'hidden md:flex',
-                    'absolute right-1 top-1/2 -translate-y-12 z-20',
-                    'h-10 w-10 items-center justify-center rounded-full',
-                    'border border-white/15 bg-black/30 text-white/80',
-                    'backdrop-blur transition hover:bg-black/40 hover:text-white',
-                    'focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20',
-                  ].join(' ')}
-                  aria-label="Scroll right"
-                  title="Scroll right"
-                >
-                  →
-                </button>
-
+                    {/* right arrow (PC) */}
+                    <button
+                      type="button"
+                      onClick={() => scrollByCards(1)}
+                      className={[
+                        'hidden md:flex',
+                        'absolute right-1 top-1/2 -translate-y-12 z-20',
+                        'h-10 w-10 items-center justify-center rounded-full',
+                        'border border-white/15 bg-black/30 text-white/80',
+                        'backdrop-blur transition hover:bg-black/40 hover:text-white',
+                        'focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20',
+                      ].join(' ')}
+                      aria-label="Scroll right"
+                      title="Scroll right"
+                    >
+                      →
+                    </button>
+                  </>
+                )}
 
                 <div
                   ref={scrollerRef}
@@ -283,7 +267,6 @@ export default function GermanPage() {
                           </div>
                         </button>
 
-
                         <p
                           className={[
                             'min-h-[40px] mt-3 text-md font-semibold text-white/80 text-center leading-tight',
@@ -297,11 +280,9 @@ export default function GermanPage() {
                   </div>
                 </div>
               </div>
-              {/* /Books row */}
             </div>
           </div>
         </div>
-
 
         <footer className="pb-6">
           <p className="text-center text-xs text-white/35">Lingui Academy</p>
