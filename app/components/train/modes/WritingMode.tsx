@@ -79,8 +79,22 @@ export function WritingMode({
   return (
     <>
       <WordImage src={current.picture} alt="card" square />
-      <div className="mt-4 text-center text-lg font-semibold text-white">{promptText}</div>
-
+      <div
+        className="mt-4 text-center text-lg font-semibold text-white select-none"
+        style={{
+          WebkitUserSelect: 'none',
+          userSelect: 'none',
+          WebkitTouchCallout: 'none',
+        }}
+        onCopy={(e) => e.preventDefault()}
+        onCut={(e) => e.preventDefault()}
+        onContextMenu={(e) => e.preventDefault()}
+        onPointerDown={(e) => {
+          e.preventDefault()
+        }}
+      >
+        {promptText}
+      </div>
       {specialChars.length > 0 && (
         <div className="mt-4">
           <div className="flex flex-wrap gap-2">
