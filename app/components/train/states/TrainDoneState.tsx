@@ -60,19 +60,19 @@ export function TrainDoneState({
 
           <button
             type="button"
-            onClick={onFinish}
-            className="mt-6 w-full rounded-2xl bg-white px-4 py-3.5 text-base font-semibold text-slate-950 shadow-lg shadow-white/10 transition hover:-translate-y-[1px] hover:shadow-xl active:translate-y-0"
-          >
-            Finish training
-          </button>
-
-          <button
-            type="button"
             onClick={onResetProgress}
             disabled={resetBusy}
             className="mt-3 w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3.5 text-base font-semibold text-white/90 transition hover:bg-white/15 disabled:opacity-60"
           >
             {resetBusy ? 'Resetting…' : 'Reset progress'}
+          </button>
+
+          <button
+            type="button"
+            onClick={onFinish}
+            className="mt-6 w-full rounded-2xl bg-white px-4 py-3.5 text-base font-semibold text-slate-950 shadow-lg shadow-white/10 transition hover:-translate-y-[1px] hover:shadow-xl active:translate-y-0"
+          >
+            Finish training
           </button>
         </div>
       </div>
