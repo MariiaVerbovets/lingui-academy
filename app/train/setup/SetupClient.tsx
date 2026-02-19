@@ -286,12 +286,11 @@ export default function SetupClient({ bookId }: { bookId: string }) {
           <div className="w-full max-w-2xl">
             <div className="min-h-[40vh] rounded-3xl border border-white/15 bg-white/10 backdrop-blur-2xl py-10 px-6 sm:py-14 sm:px-10 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.7)]">
               <div className="flex items-center gap-3">
-                <div className="flex items-center gap-3">
-                  <FlagCircle
-                    src={lang === 'german' ? '/germany.png' : '/portugal2.png'}
-                    alt="flag"
-                  />
-                </div>
+                <FlagCircle
+                  isAppIcon
+                  src={lang === 'german' ? '/app-icon-german.png' : '/app-icon-portuguese.png'}
+                  alt="flag"
+                />
                 <div>
                   <p className="text-sm text-white/60">{bookName ?? 'Lingui Academy'}</p>
                   <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white">

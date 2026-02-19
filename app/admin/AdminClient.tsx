@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { getIsAdmin } from '@/lib/isAdmin'
 import AdminCreateContentTab from './AdminCreateContentTab'
 import AdminBookAccessTab from './AdminBookAccessTab'
+import { FlagCircle } from '../languages/page'
 
 type TabKey = 'create' | 'access'
 
@@ -96,9 +97,7 @@ export default function AdminClient() {
             <div className="rounded-3xl border border-white/15 bg-white/10 backdrop-blur-2xl py-8 px-6 sm:py-10 sm:px-10 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.7)]">
               {/* Header */}
               <div className="flex items-center gap-3">
-                <div className="h-11 w-11 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center">
-                  <span className="text-xl">🐧</span>
-                </div>
+                <FlagCircle isAppIcon src="/app-icon.png" alt="Lingui Academy" />
                 <div>
                   <p className="text-sm text-white/60">Lingui Academy</p>
                   <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white">Admin panel</h1>

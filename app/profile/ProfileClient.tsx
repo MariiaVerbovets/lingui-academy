@@ -138,9 +138,7 @@ export default function ProfileClient() {
 
               {/* Header */}
               <div className="flex items-center gap-3">
-                <div className="h-11 w-11 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center">
-                  <span className="text-xl">🐧</span>
-                </div>
+                  <FlagCircle isAppIcon src="/app-icon.png" alt="Lingui Academy" />
                 <div>
                   <p className="text-sm text-white/60">Lingui Academy</p>
                   <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white">

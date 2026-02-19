@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
+import { FlagCircle } from '../languages/page'
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -65,9 +66,7 @@ export default function LoginPage() {
             <div className="rounded-3xl border border-white/10 bg-white/5 p-6 sm:p-8 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.6)] backdrop-blur-xl">
               {/* Brand */}
               <div className="flex items-center gap-3">
-                <div className="h-11 w-11 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center">
-                  <span className="text-xl">🐧</span>
-                </div>
+                <FlagCircle isAppIcon src="/app-icon.png" alt="Lingui Academy" />
                 <div>
                   <p className="text-sm text-white/60">Lingui Academy</p>
                   <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white">

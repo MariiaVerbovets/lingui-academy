@@ -14,7 +14,13 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Lingui Academy",
-  description: "Your space to learn with fun",
+  description: "Your space to learn languages with fun",
+  icons: {
+    icon: [
+      { url: "/app-icon.png", type: "image/png" },
+    ],
+    apple: "/app-icon.png"
+  },
 };
 
 export default function RootLayout({

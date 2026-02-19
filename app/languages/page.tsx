@@ -35,16 +35,29 @@ const LEARN_ITEMS: LearnItem[] = [
   },
 ]
 
-export function FlagCircle({ src, alt }: { src: string; alt: string }) {
+export function FlagCircle({ src, alt, isAppIcon }: { src: string; alt: string; isAppIcon?: boolean }) {
   return (
-    <div className="relative h-12 w-12 overflow-hidden rounded-full shrink-0">
-      <Image
-        src={src}
-        alt={alt}
-        fill
-        sizes="40px"
-        className="object-cover"
-      />
+    <div
+      className={`relative shrink-0
+        ${isAppIcon
+          ? `
+            h-20 w-20 p-[2px] rounded-full
+            bg-gradient-to-br from-fuchsia-400/60 via-purple-500/40 to-indigo-500/40
+            shadow-[0_0_40px_rgba(168,85,247,0.35)]
+          `
+          : 'h-12 w-12 rounded-full'
+        }
+      `}
+    >
+      <div className="relative h-full w-full rounded-full overflow-hidden bg-slate-900">
+        <Image
+          src={src}
+          alt={alt}
+          fill
+          sizes={isAppIcon ? "80px" : "48px"}
+          className="object-cover"
+        />
+      </div>
     </div>
   )
 }
@@ -127,9 +140,7 @@ export default function LanguagePage() {
             <div className="rounded-3xl border border-white/10 bg-white/5 py-10 px-6 sm:py-14 sm:px-10 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.6)] backdrop-blur-xl">
               {/* Header */}
               <div className="flex items-center gap-3">
-                <div className="h-11 w-11 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center">
-                  <span className="text-xl">🐧</span>
-                </div>
+                <FlagCircle isAppIcon src="/app-icon.png" alt="Lingui Academy" />
                 <div>
                   <p className="text-sm text-white/60">Lingui Academy</p>
                   <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-white">
