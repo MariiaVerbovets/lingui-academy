@@ -29,7 +29,7 @@ export default function TopRightIcons() {
   }, [])
 
   return (
-    <div className="absolute right-6 top-6 z-20 flex items-center gap-3">
+    <div className="absolute sm:right-6 sm:top-6 right-2 top-3 z-20 flex items-center gap-3">
       {/* ===== PROFILE ===== */}
       <button
         onClick={() =>
