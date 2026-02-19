@@ -3,9 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
-import { getIsAdmin } from '@/lib/isAdmin'
 import { FlagCircle } from '../page'
-import AdminIcon from '../../components/AdminIcon'
+import SettingsBlock from '../../components/SettingsBlock'
 
 type Language = 'DE' | 'PT'
 
@@ -21,7 +20,6 @@ export default function GermanPage() {
   const [loading, setLoading] = useState(true)
   const [books, setBooks] = useState<Book[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [isAdmin, setIsAdmin] = useState(false)
 
   const scrollerRef = useRef<HTMLDivElement | null>(null)
 
@@ -64,9 +62,6 @@ export default function GermanPage() {
       try {
         setError(null)
 
-        const admin = await getIsAdmin()
-        setIsAdmin(admin)
-
         const { data: b, error: e } = await supabase.rpc('get_allowed_books', {
           p_lang: 'DE'
         })
@@ -75,7 +70,6 @@ export default function GermanPage() {
         setBooks((b ?? []) as Book[])
       } catch (err: any) {
         console.warn('German page load failed', err)
-        setIsAdmin(false)
         setError(err?.message ?? 'Unknown error')
       } finally {
         setLoading(false)
@@ -97,7 +91,7 @@ export default function GermanPage() {
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 px-4">
-      {isAdmin && <AdminIcon from="/languages/german" />}
+      <SettingsBlock />
 
       {/* Back button OUTSIDE card */}
       <button

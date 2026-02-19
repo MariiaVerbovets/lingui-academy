@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
-import { getIsAdmin } from '@/lib/isAdmin'
 import Select from '../../components/Select'
 import { FlagCircle } from '../../languages/page'
 import AdminIcon from '@/app/components/AdminIcon'
+import SettingsBlock from '../../components/SettingsBlock'
 
 type TrainMode = 'cards' | 'single' | 'writing' | 'articles' | 'plural' | 'match'
 
@@ -43,7 +43,6 @@ function parseCountFromUrl(raw: string | null, fallback = 10) {
 }
 
 export default function SetupClient({ bookId }: { bookId: string }) {
-  const [isAdmin, setIsAdmin] = useState(false)
   const router = useRouter()
   const sp = useSearchParams()
 
@@ -98,9 +97,6 @@ export default function SetupClient({ bookId }: { bookId: string }) {
         router.push('/login')
         return
       }
-
-      const admin = await getIsAdmin()
-      setIsAdmin(admin)
 
       if (!bookId?.trim()) {
         setError('Missing bookId.')
@@ -283,9 +279,7 @@ export default function SetupClient({ bookId }: { bookId: string }) {
             Back
           </button>
 
-          {isAdmin ? <AdminIcon from={currentUrl} /> : (
-            <div className="h-10 w-10" />
-          )}
+          <SettingsBlock />
         </div>
 
         <div className="flex flex-1 items-start justify-center pt-4 pb-10 sm:items-center sm:py-16">

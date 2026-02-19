@@ -111,7 +111,7 @@ export default function AdminClient() {
                   type="button"
                   onClick={() => setTab('create')}
                   className={[
-                    'rounded-2xl px-4 py-2 text-sm font-semibold transition',
+                    'rounded-2xl px-8 py-3 text-md font-semibold transition',
                     tab === 'create' ? 'bg-white text-slate-950 shadow-lg shadow-white/10' : 'bg-white/10 text-white/80 border border-white/10 hover:bg-white/15',
                   ].join(' ')}
                 >
@@ -123,7 +123,7 @@ export default function AdminClient() {
                     type="button"
                     onClick={() => setTab('access')}
                     className={[
-                      'rounded-2xl px-4 py-2 text-sm font-semibold transition',
+                      'rounded-2xl px-8 py-3 text-md font-semibold transition',
                       tab === 'access' ? 'bg-white text-slate-950 shadow-lg shadow-white/10' : 'bg-white/10 text-white/80 border border-white/10 hover:bg-white/15',
                     ].join(' ')}
                   >

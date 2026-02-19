@@ -1,21 +1,14 @@
 'use client'
 
-
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
-import { getIsAdmin } from '@/lib/isAdmin'
 import Image from 'next/image'
 import { getNativeLanguage, setNativeLanguage, type NativeLanguage } from '@/lib/nativeLanguage'
-import AdminIcon from '../components/AdminIcon'
+import SettingsBlock from '../components/SettingsBlock'
+import { NATIVE_ITEMS } from '@/lib/constants'
 
 type Step = 'checking' | 'pick_native' | 'main'
-
-const NATIVE_ITEMS: Array<{ key: NativeLanguage; title: string; subtitle: string; emoji: string }> = [
-  { key: 'en', title: 'English', subtitle: 'EN', emoji: '🇺🇸' },
-  { key: 'uk', title: 'Ukrainian', subtitle: 'UA', emoji: '🇺🇦' },
-  { key: 'ru', title: 'Russian', subtitle: 'RU', emoji: '🇷🇺' },
-]
 
 type LearnItem = {
   path: '/languages/german' | '/languages/portuguese'
@@ -60,7 +53,6 @@ export default function LanguagePage() {
   const router = useRouter()
 
   const [loading, setLoading] = useState(true)
-  const [isAdmin, setIsAdmin] = useState(false)
 
   const [step, setStep] = useState<Step>('checking')
   const [saveBusy, setSaveBusy] = useState(false)
@@ -77,16 +69,7 @@ export default function LanguagePage() {
       }
 
       try {
-        // 1) admin
-        try {
-          const admin = await getIsAdmin()
-          setIsAdmin(admin)
-        } catch (e) {
-          console.warn('getIsAdmin failed', e)
-          setIsAdmin(false)
-        }
-
-        // 2) native language check
+        // native language check
         const nl = await getNativeLanguage()
         setStep(nl ? 'main' : 'pick_native')
       } catch (e: any) {
@@ -127,8 +110,8 @@ export default function LanguagePage() {
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 px-4">
-      {/* Admin page icon */}
-      {isAdmin && <AdminIcon from="/languages" />}
+      {/* Settings block */}
+      <SettingsBlock />
 
       {/* Soft background blobs */}
       <div className="pointer-events-none absolute inset-0">
@@ -165,7 +148,7 @@ export default function LanguagePage() {
                     </div>
                   )}
 
-                  <div className="mt-7 grid gap-4 sm:grid-cols-3">
+                  <div className="mt-7 grid gap-3 sm:grid-cols-3">
                     {NATIVE_ITEMS.map((it) => (
                       <button
                         key={it.key}
@@ -180,11 +163,8 @@ export default function LanguagePage() {
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <span className="text-4xl">{it.emoji}</span>
-                            <div>
-                              <p className="text-base font-semibold text-white">{it.title}</p>
-                              <p className="text-sm text-white/55">{it.subtitle}</p>
-                            </div>
+                            <FlagCircle src={it.flag} alt={it.title} />
+                              <p className="text-sm font-semibold text-white">{it.title}</p>
                           </div>
                           <span className="text-white/40 transition group-hover:translate-x-0.5 group-hover:text-white/60">
                             →
