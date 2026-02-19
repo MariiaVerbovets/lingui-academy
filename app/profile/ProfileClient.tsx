@@ -18,12 +18,20 @@ export default function ProfileClient() {
   const [name, setName] = useState('')
   const [editingName, setEditingName] = useState(false)
   const [nativeLang, setNativeLang] = useState<NativeLanguage | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [ok, setOk] = useState<string | null>(null)
 
   const goBack = () => {
     if (from && from.startsWith('/')) return router.push(from)
     if (typeof window !== 'undefined' && window.history.length > 1) return router.back()
     router.push('/languages')
   }
+
+  useEffect(() => {
+    if (!ok) return
+    const t = setTimeout(() => setOk(null), 5000)
+    return () => clearTimeout(t)
+  }, [ok])
 
   useEffect(() => {
     let cancelled = false
@@ -59,20 +67,40 @@ export default function ProfileClient() {
   }, [router])
 
   const saveName = async () => {
+    setError(null)
+    setOk(null)
+
     const { data } = await supabase.auth.getSession()
     if (!data.session) return
 
-    await supabase
+    const { error: updErr } = await supabase
       .from('profiles')
       .update({ first_name: name })
       .eq('id', data.session.user.id)
 
+    if (updErr) {
+      setError(updErr.message)
+      return
+    }
+
+    setOk('Name saved ✅')
     setEditingName(false)
   }
 
   const changeNative = async (lang: NativeLanguage) => {
+    setError(null)
+    setOk(null)
+
+    const prev = nativeLang
     setNativeLang(lang)
-    await setNativeLanguage(lang)
+
+    try {
+      await setNativeLanguage(lang)
+      setOk('Native language saved ✅')
+    } catch (e: any) {
+      setNativeLang(prev ?? null)
+      setError(e?.message ?? 'Failed to save native language')
+    }
   }
 
   if (loading) {
@@ -152,6 +180,18 @@ export default function ProfileClient() {
 
                   {/* Name block */}
                   <div>
+                    {error && (
+                      <div className="justify-self-start w-fit mb-5 inline-flex rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-md text-red-200">
+                        {error}
+                      </div>
+                    )}
+
+                    {ok && (
+                      <div className="justify-self-start w-fit mb-5 inline-flex rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-md text-emerald-200">
+                        {ok}
+                      </div>
+                    )}
+
                     <div className="text-lg text-white/80 mb-2">Your name</div>
 
                     {!editingName ? (

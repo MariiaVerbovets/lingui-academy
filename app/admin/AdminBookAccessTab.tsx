@@ -238,7 +238,7 @@ export default function AdminBookAccessTab() {
         </div>
       )}
       {ok && (
-        <div className="justify-self-start w-fit inline-flex rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm text-emerald-200">
+        <div className="justify-self-start w-fit inline-flex rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-md text-emerald-200">
           {ok}
         </div>
       )}
