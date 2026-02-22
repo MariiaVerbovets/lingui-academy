@@ -503,6 +503,7 @@ export default function AdminCreateContentTab() {
       translation_en: '',
       picture: '',
       tasks: '[]',
+      topic_id: '',
     }))
     setWordErrors({})
     setWordSubmitAttempted(false)
