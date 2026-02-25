@@ -48,7 +48,6 @@ export async function fetchWordsForMode(params: {
     p_mode: mode,
     p_limit: limit,
   })
-  console.log('WORDS FOR TRAINING: ', data)
   if (error) throw error
   return (data ?? []) as WordRow[]
 }
