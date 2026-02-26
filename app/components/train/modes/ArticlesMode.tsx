@@ -56,7 +56,7 @@ export function ArticlesMode({ current, answered, selectedArticle, onAnswer }: A
   return (
     <>
       <WordImage src={current.picture} alt="word" square />
-      <div className="mt-4 text-center text-xl font-semibold text-white">{targetWord}</div>
+      <div className="mt-4 text-center text-2xl font-semibold text-white">{targetWord}</div>
 
       <div className="mt-6 grid grid-cols-3 gap-2">
         {ARTICLES.map((a, idx) => {
@@ -67,7 +67,7 @@ export function ArticlesMode({ current, answered, selectedArticle, onAnswer }: A
           const keyHint = idx === 0 ? '1' : idx === 1 ? '2' : '3'
           const cls = [
             'group relative',
-            'rounded-2xl px-4 py-3 text-md font-semibold transition border',
+            'rounded-2xl px-4 py-3 text-lg font-semibold transition border',
             isCorrect
               ? 'bg-emerald-500/15 text-emerald-100 border-emerald-400/30'
               : isWrongSel

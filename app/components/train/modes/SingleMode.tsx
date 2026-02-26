@@ -22,7 +22,7 @@ export function SingleMode({
   return (
     <>
       <WordImage src={current.picture} alt="card" square />
-      <div className="mt-4 text-center text-lg font-semibold text-white">{promptText}</div>
+      <div className="mt-4 text-center text-xl font-semibold text-white">{promptText}</div>
 
       {needsArticle && (
         <div className="mt-6 grid grid-cols-3 gap-2">
@@ -35,7 +35,7 @@ export function SingleMode({
             const isWrongSel = answered && isSel && !isCorrect
 
             const cls = [
-              'rounded-2xl px-4 py-3 text-md font-semibold transition border',
+              'rounded-2xl px-4 py-3 text-lg font-semibold transition border',
               isCorrect
                 ? 'bg-emerald-500/15 text-emerald-100 border-emerald-400/30'
                 : isWrongSel
@@ -67,7 +67,7 @@ export function SingleMode({
           const showCorrect = answered && opt.isCorrect
           const showWrong = answered && isSelected && !opt.isCorrect
 
-          const base = 'w-full rounded-2xl px-4 py-3 text-md font-semibold transition border'
+          const base = 'w-full rounded-2xl px-4 py-3 text-lg font-semibold transition border'
           const normal = 'bg-white/10 text-white/90 border-white/10 hover:bg-white/15'
           const correct = 'bg-emerald-500/15 text-emerald-100 border-emerald-400/30'
           const wrong = 'bg-red-500/15 text-red-100 border-red-400/30'

@@ -37,7 +37,7 @@ export default function TopRightIcons() {
         }
         className={[
           'group relative h-10 w-10 rounded-xl border border-white/15 bg-white/5',
-          'transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/20',
+          'transition hover:bg-white/10',
         ].join(' ')}
         aria-label="Profile"
         type="button"
@@ -71,7 +71,7 @@ export default function TopRightIcons() {
           }
           className={[
             'group relative h-10 w-10 rounded-xl border border-white/15 bg-white/5',
-            'transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/20',
+            'transition hover:bg-white/10',
           ].join(' ')}
           aria-label="Admin"
           type="button"

@@ -42,16 +42,32 @@ export function CardsMode({
             {/* Front */}
             <div className="absolute inset-0 [backface-visibility:hidden]">
               <WordImage src={current.picture} alt={wordText} square />
-              <div className="mt-4 text-center text-lg font-semibold text-white">{wordText}</div>
+              <div className="mt-4 text-center text-2xl font-semibold text-white">{wordText}</div>
             </div>
 
             {/* Back */}
             <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)]">
-              <div className="h-full w-full rounded-2xl border border-white/10 bg-white/10 backdrop-blur-xl p-5 flex flex-col justify-center">
-                <div className="text-center">
-                  <div className="text-xl font-semibold text-white">{wordText}</div>
-                  <div className="mt-4 text-xl text-white font-medium">
-                    {translation ? <span>{translation}</span> : <div className="text-white/40">No translation.</div>}
+              <div className="relative h-full w-full overflow-hidden rounded-2xl border border-white/10">
+                {/* Background image */}
+                <div
+                  className="absolute inset-0 bg-cover bg-center"
+                  style={{ backgroundImage: `url(${current.picture})` }}
+                />
+
+                {/* Dark overlay (dim) */}
+                <div className="absolute inset-0 bg-slate-950/80" />
+
+                {/* Content glass */}
+                <div className="relative h-full w-full p-5 flex flex-col justify-center">
+                  <div className="text-center">
+                    <div className="text-2xl font-semibold text-white drop-shadow-sm">{wordText}</div>
+                    <div className="mt-4 text-2xl text-white/95 font-medium drop-shadow-sm">
+                      {translation ? (
+                        <span>{translation}</span>
+                      ) : (
+                        <div className="text-white/50">No translation.</div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -60,7 +76,7 @@ export function CardsMode({
         </div>
       </button>
 
-      <div className="mt-12 flex items-center justify-between">
+      <div className="mt-15 flex items-center justify-between">
         <button
           type="button"
           onClick={onWrong}
