@@ -11,7 +11,7 @@ export default function ProfileIcon({ from }: { from: string }) {
         onClick={() => router.push('/profile?from=' + encodeURIComponent(from))}
         className={[
           'group relative h-10 w-10 rounded-xl border border-white/15 bg-white/5',
-          'transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/20',
+          'transition hover:bg-white/10',
         ].join(' ')}
         aria-label="Profile"
         type="button"

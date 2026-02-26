@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { uploadWithIncrement } from '@/lib/uploadImage'
 import { buildBookBase, buildWordBase } from '@/lib/filenames'
 import { ImageUploader } from '../components/imageUploader'
+import { removeFromImagesBucketByPublicUrl } from '@/lib/removePictureByPublicUrl'
 import Select from '../components/Select'
 
 type Language = 'DE' | 'PT'
@@ -133,6 +134,9 @@ export default function AdminCreateContentTab() {
     tasks: '[]',
   })
 
+  const [wordImageFile, setWordImageFile] = useState<File | null>(null)
+  const [bookImageFile, setBookImageFile] = useState<File | null>(null)
+
   // Inline validation state
   const [bookErrors, setBookErrors] = useState<BookErrors>({})
   const [topicErrors, setTopicErrors] = useState<TopicErrors>({})
@@ -168,7 +172,6 @@ export default function AdminCreateContentTab() {
     const errs: BookErrors = {}
     if (!f.language) errs.language = 'Choose a language'
     if (!f.name.trim()) errs.name = 'Book name required'
-    if (!f.picture.trim()) errs.picture = 'Picture '
     return errs
   }
 
@@ -219,8 +222,6 @@ export default function AdminCreateContentTab() {
     if (!f.translation_en.trim()) errs.translation_en = 'Translation required'
     if (!f.translation_ukr.trim()) errs.translation_ukr = 'Translation required'
     if (!f.translation_ru.trim()) errs.translation_ru = 'Translation required'
-
-    if (!f.picture.trim()) errs.picture = 'Picture required'
 
     try {
       JSON.parse(f.tasks || '[]')
@@ -367,9 +368,13 @@ export default function AdminCreateContentTab() {
     setBookSubmitAttempted(false)
     setTopicSubmitAttempted(false)
     setWordSubmitAttempted(false)
+
+    setWordImageFile(null)
+    setBookImageFile(null)
+    setWF('picture', '')
+    setBF('picture', '')
   }, [mode])
 
-  // ---------- Save book ----------
   const submitBook = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -381,10 +386,22 @@ export default function AdminCreateContentTab() {
     setBookErrors(errs)
     if (Object.keys(errs).length > 0) return
 
+    if (!bookImageFile) {
+      setBookErrors((p) => ({ ...p, picture: 'Picture required' }))
+      return
+    }
+
+    const baseName = buildBookBase(bookForm.name)
+    const uploadedUrl = await uploadWithIncrement(bookImageFile, {
+      entity: 'books',
+      language: bookForm.language,
+      baseName,
+    })
+
     const payload = {
       language: bookForm.language,
       name: bookForm.name.trim(),
-      picture: bookForm.picture.trim(),
+      picture: uploadedUrl,
     }
 
     const { error: insErr } = await supabase
@@ -394,11 +411,15 @@ export default function AdminCreateContentTab() {
       .single()
 
     if (insErr) {
+      try {
+        await removeFromImagesBucketByPublicUrl(uploadedUrl)
+      } catch {}
       setError(insErr.message)
       return
     }
 
     setOk('Book added ✅')
+    setBookImageFile(null)
     setBookForm((p) => ({ ...p, name: '', picture: '' }))
     setBookErrors({})
     setBookSubmitAttempted(false)
@@ -453,6 +474,27 @@ export default function AdminCreateContentTab() {
     setWordErrors(errs)
     if (Object.keys(errs).length > 0) return
 
+    if (!wordImageFile) {
+      setWordErrors((p) => ({ ...p, picture: 'Picture required' }))
+      return
+    }
+
+    // 1) upload first
+    const topicName = topics.find((t) => String(t.id) === String(wordForm.topic_id))?.name ?? '-'
+    const baseName = buildWordBase({
+      lesson: wordForm.lesson,
+      topicName,
+      wordSingular: wordForm.word_singular,
+      wordPlural: wordForm.word_plural,
+    })
+
+    const uploadedUrl = await uploadWithIncrement(wordImageFile, {
+      entity: 'words',
+      language: wordForm.language,
+      baseName,
+    })
+
+    // 2) build payload
     const lessonNum = Number(wordForm.lesson)
     const singular = wordForm.word_singular.trim()
     const plural = wordForm.word_plural.trim()
@@ -461,6 +503,9 @@ export default function AdminCreateContentTab() {
     try {
       tasksJson = JSON.parse(wordForm.tasks || '[]')
     } catch {
+      try {
+        await removeFromImagesBucketByPublicUrl(uploadedUrl)
+      } catch {}
       setWordErrors((p) => ({ ...p, tasks: 'Tasks should be a valid JSON' }))
       return
     }
@@ -481,17 +526,22 @@ export default function AdminCreateContentTab() {
       book_id: Number(wordForm.book_id),
       lesson: lessonNum,
       topic_id: Number(wordForm.topic_id),
-      picture: wordForm.picture.trim(),
+      picture: uploadedUrl,
       tasks: tasksJson,
     }
 
+    // 3) insert
     const { error: insErr } = await supabase.from('words').insert(payload)
     if (insErr) {
+      try {
+        await removeFromImagesBucketByPublicUrl(uploadedUrl)
+      } catch {}
       setError(insErr.message)
       return
     }
 
     setOk('Word added ✅')
+    setWordImageFile(null)
     setWordForm((p) => ({
       ...p,
       word_singular: '',
@@ -606,6 +656,7 @@ export default function AdminCreateContentTab() {
                   onChange={(v) => {
                     setBF('language', v as Language)
                     setBF('picture', '')
+                    setBookImageFile(null)
                   }}
                   options={languageOptions}
                   placeholder="Language"
@@ -629,17 +680,12 @@ export default function AdminCreateContentTab() {
               <ImageUploader
                 value={bookForm.picture}
                 resetKey={bookResetKey}
-                onChange={(url) => setBF('picture', url)}
-                onError={(msg) => setError(msg)}
-                upload={async (file) => {
-                  const baseName = buildBookBase(bookForm.name)
-                  return await uploadWithIncrement(file, {
-                    entity: 'books',
-                    language: bookForm.language,
-                    baseName,
-                  })
+                deferred
+                onPickFile={(file) => {
+                  setBookImageFile(file)
                 }}
-                canUpload={() => {
+                onError={(msg) => setError(msg)}
+                canPick={() => {
                   if (!bookForm.name.trim()) return { ok: false, message: 'Enter book name first.' }
                   return { ok: true }
                 }}
@@ -667,6 +713,7 @@ export default function AdminCreateContentTab() {
                     setWF('book_id', '')
                     setWF('topic_id', '')
                     setWF('picture', '')
+                    setWordImageFile(null)
                   }}
                   options={languageOptions}
                   placeholder="Language"
@@ -678,7 +725,11 @@ export default function AdminCreateContentTab() {
                 <label className="text-md text-white/80">Book</label>
                 <Select
                   value={wordForm.book_id}
-                  onChange={(v) => setWF('book_id', v)}
+                  onChange={(v) => {
+                    setWF('book_id', v)
+                    setWordImageFile(null)
+                    setWF('picture', '')
+                  }}
                   options={bookOptions}
                   placeholder="- choose -"
                 />
@@ -689,7 +740,11 @@ export default function AdminCreateContentTab() {
                 <label className="text-md text-white/80">Topic</label>
                 <Select
                   value={wordForm.topic_id}
-                  onChange={(v) => setWF('topic_id', v)}
+                  onChange={(v) => {
+                    setWF('topic_id', v)
+                    setWordImageFile(null)
+                    setWF('picture', '')
+                  }}
                   options={topicOptions}
                   placeholder="- choose -"
                 />
@@ -812,46 +867,24 @@ export default function AdminCreateContentTab() {
                 <label className="text-md text-white/80">Picture</label>
                 <ImageUploader
                   value={wordForm.picture}
-                  resetKey={wordResetKey}
-                  onChange={(url) => setWF('picture', url)}
-                  onError={(msg) => setError(msg)}
-                  upload={async (file) => {
-                    const topicName = topics.find((t) => String(t.id) === String(wordForm.topic_id))?.name ?? '-'
-                    const baseName = buildWordBase({
-                      lesson: wordForm.lesson,
-                      topicName,
-                      wordSingular: wordForm.word_singular,
-                      wordPlural: wordForm.word_plural,
-                    })
-                    return await uploadWithIncrement(file, {
-                      entity: 'words',
-                      language: wordForm.language,
-                      baseName,
-                    })
+                  deferred
+                  onPickFile={(file) => {
+                    setWordImageFile(file)
                   }}
-                  canUpload={() => {
+                  canPick={() => {
                     const lessonNum = Number(wordForm.lesson)
-                    if (!Number.isFinite(lessonNum) || lessonNum < 1) {
-                      return { ok: false, message: 'Enter correct lesson number.' }
-                    }
-
-                    if (!wordForm.topic_id.trim()) {
-                      return { ok: false, message: 'Select a topic first.' }
-                    }
+                    if (!Number.isFinite(lessonNum) || lessonNum < 1) return { ok: false, message: 'Enter correct lesson number.' }
+                    if (!wordForm.topic_id.trim()) return { ok: false, message: 'Select a topic first.' }
 
                     const singular = wordForm.word_singular.trim()
                     const plural = wordForm.word_plural.trim()
 
-                    if (!singular) {
-                      return { ok: false, message: 'Enter word (singular) first.' }
-                    }
-
-                    if (singular === '-' && !plural) {
-                      return { ok: false, message: 'If singular is "-", enter plural first.' }
-                    }
+                    if (!singular) return { ok: false, message: 'Enter word (singular) first.' }
+                    if (singular === '-' && !plural) return { ok: false, message: 'If singular is "-", enter plural first.' }
 
                     return { ok: true }
                   }}
+                  onError={(msg) => setError(msg)}
                 />
                 <FieldError msg={wordErrors.picture} />
               </div>
