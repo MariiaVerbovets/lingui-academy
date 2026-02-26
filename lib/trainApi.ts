@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabaseClient'
 import type { NativeLanguage, PoolRow, TrainMode, WordRow } from '@/lib/types'
 
-type AnswerMode = Extract<TrainMode, 'single' | 'writing' | 'articles' | 'plural' | 'match'>
+type AnswerMode = Extract<TrainMode, 'cards' | 'single' | 'writing' | 'articles' | 'plural' | 'match'>
 
 export async function getSessionUserId(): Promise<string | null> {
   const { data } = await supabase.auth.getSession()
@@ -86,9 +86,10 @@ export async function resetProgressForLesson(
 }
 
 export async function markWordLearnedCards(wordId: number): Promise<void> {
-  const { error } = await supabase.rpc('mark_word_learned', {
+  const { error } = await supabase.rpc('apply_word_answer', {
     p_word_id: wordId,
     p_mode: 'cards',
+    p_correct: true
   })
   if (error) throw error
 }
