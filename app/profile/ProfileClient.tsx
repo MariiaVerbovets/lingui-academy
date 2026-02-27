@@ -223,8 +223,8 @@ export default function ProfileClient() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-md text-white/55">{title}</p>
-          <div className="mt-2 sm:text-2xl text-lg font-semibold text-white">{value}</div>
           {sub ? <p className="mt-1 text-xs text-white/45">{sub}</p> : <div className="mt-1 h-4" />}
+          <div className="mt-2 sm:text-2xl text-lg font-semibold text-white">{value}</div>
         </div>
         <div className="rounded-2xl border border-white/10 bg-white/10 px-3 py-2 text-lg">
           {icon}
@@ -478,22 +478,26 @@ export default function ProfileClient() {
                           icon="🔥"
                         />
                         <StatCard
-                          title="Points (7 days)"
+                          title="Points"
+                          sub="(7 days)"
                           value={progress.quick.points_last_days}
                           icon="⚡"
                         />
                         <StatCard
-                          title="Mastered (7 days)"
+                          title="Mastered"
+                          sub="(7 days)"
                           value={progress.quick.mastered_last_days}
                           icon="✅"
                         />
                         <StatCard
-                          title="Mastered (month)"
+                          title="Mastered"
+                          sub="(month)"
                           value={progress.quick.mastered_month}
                           icon="📅"
                         />
                         <StatCard
-                          title="Mastered (all time)"
+                          title="Mastered"
+                          sub="(all time)"
                           value={progress.quick.mastered_all}
                           icon="🏁"
                         />
