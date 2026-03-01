@@ -524,36 +524,34 @@ export default function ProfileClient() {
                               const alpha = v === 0 ? 0.06 : 0.12 + 0.38 * t
                               const h = clamp(Math.round((v / Math.max(1, maxPoints)) * 140), 8, 140)
 
-                              return (
-                                <div key={d.date} className="flex-1 min-w-0">
-                                  <div
-                                    className="w-full rounded-xl border transition-all duration-300 hover:scale-[1.04] flex items-end justify-center"
-                                    style={{
-                                      height: `${h}px`,
-                                      backgroundColor: `rgba(16, 185, 129, ${alpha})`,
-                                      borderColor:
-                                        v === 0
-                                          ? 'rgba(255,255,255,0.08)'
-                                          : `rgba(16,185,129,${Math.min(alpha + 0.15, 0.65)})`,
-                                      boxShadow:
-                                        v > 0
-                                          ? `0 10px 24px rgba(16,185,129,${alpha * 0.35})`
-                                          : undefined,
-                                    }}
-                                    title={`${v} points, ${m} mastered`}
-                                  >
-                                    {v > 0 && h >= 18 && (
-                                      <span className="pb-1 text-xs sm:text-sm font-semibold text-white/90 select-none">
-                                        {v}
-                                      </span>
-                                    )}
-                                  </div>
+                          return (
+                            <div key={d.date} className="flex-1 min-w-0 relative">
+                              {v > 0 && (
+                                <span className="absolute left-1/2 -translate-x-1/2 -top-5 text-xs sm:text-sm font-semibold text-white/90 select-none">
+                                  {v}
+                                </span>
+                              )}
 
-                                  <div className="mt-2 sm:text-sm text-[10px] text-white/45 text-center truncate">
-                                    {formatDateShort(d.date)}
-                                  </div>
-                                </div>
-                              )
+                              <div
+                                className="w-full rounded-xl border transition-all duration-300 hover:scale-[1.04] flex items-end justify-center"
+                                style={{
+                                  height: `${h}px`,
+                                  backgroundColor: `rgba(16, 185, 129, ${alpha})`,
+                                  borderColor:
+                                    v === 0
+                                      ? 'rgba(255,255,255,0.08)'
+                                      : `rgba(16,185,129,${Math.min(alpha + 0.15, 0.65)})`,
+                                  boxShadow:
+                                    v > 0 ? `0 10px 24px rgba(16,185,129,${alpha * 0.35})` : undefined,
+                                }}
+                                title={`${v} points, ${m} mastered`}
+                              />
+
+                              <div className="mt-2 sm:text-sm text-[10px] text-white/45 text-center truncate">
+                                {formatDateShort(d.date)}
+                              </div>
+                            </div>
+                          )
                             })}
                           </div>
                         </div>
