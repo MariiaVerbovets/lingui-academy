@@ -305,188 +305,190 @@ export default function SetupClient({ bookId }: { bookId: string }) {
                 </div>
               )}
 
-              {!error && rows.length === 0 && (
+              {(!error && rows.length === 0) ? (
                 <div className="mt-6 inline-flex rounded-2xl border border-white/10 bg-white/5 p-4 text-md text-white/60">
                   No available lessons for this book.
                 </div>
-              )}
+              ) : (
+              <>
+                {/* Lessons */}
+                <div className="mt-6 space-y-2">
+                  <div className="text-md font-medium text-white/80">Lesson</div>
 
-              {/* Lessons */}
-              <div className="mt-6 space-y-2">
-                <div className="text-md font-medium text-white/80">Lesson</div>
-
-                <Select
-                  value={selectedLesson === null ? '' : String(selectedLesson)}
-                  onChange={(v) => setSelectedLesson(v ? Number(v) : null)}
-                  placeholder="Select lesson…"
-                  options={lessonOptions}
-                />
-              </div>
-
-              {/* Modes */}
-              <div className="mt-12 space-y-2">
-                <div className="text-md font-medium text-white/80">Training mode</div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setMode('cards')}
-                    className={[
-                      'rounded-2xl px-4 py-3 text-sm font-semibold transition',
-                      mode === 'cards'
-                        ? 'bg-white text-slate-950 shadow-lg shadow-white/10'
-                        : 'bg-white/10 text-white/80 border border-white/10 hover:bg-white/15',
-                    ].join(' ')}
-                  >
-                    Cards review <span className="opacity-60">({cardsPct}%)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setMode('single')}
-                    className={[
-                      'rounded-2xl px-4 py-3 text-sm font-semibold transition',
-                      mode === 'single'
-                        ? 'bg-white text-slate-950 shadow-lg shadow-white/10'
-                        : 'bg-white/10 text-white/80 border border-white/10 hover:bg-white/15',
-                    ].join(' ')}
-                  >
-                    Single choice <span className="opacity-60">({singlePct}%)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setMode('writing')}
-                    className={[
-                      'rounded-2xl px-4 py-3 text-sm font-semibold transition',
-                      mode === 'writing'
-                        ? 'bg-white text-slate-950 shadow-lg shadow-white/10'
-                        : 'bg-white/10 text-white/80 border border-white/10 hover:bg-white/15',
-                    ].join(' ')}
-                  >
-                    Writing <span className="opacity-60">({writingPct}%)</span>
-                  </button>
-
-                  {hasNounsInLesson && (
-                    <button
-                      type="button"
-                      onClick={() => setMode('articles')}
-                      className={[
-                        'rounded-2xl px-4 py-3 text-sm font-semibold transition',
-                        mode === 'articles'
-                          ? 'bg-white text-slate-950 shadow-lg shadow-white/10'
-                          : 'bg-white/10 text-white/80 border border-white/10 hover:bg-white/15',
-                      ].join(' ')}
-                    >
-                      Articles <span className="opacity-60">({articlesPct}%)</span>
-                    </button>
-                  )}
-
-                  {hasNounsInLesson && (
-                    <button
-                      type="button"
-                      onClick={() => setMode('plural')}
-                      className={[
-                        'rounded-2xl px-4 py-3 text-sm font-semibold transition',
-                        mode === 'plural'
-                          ? 'bg-white text-slate-950 shadow-lg shadow-white/10'
-                          : 'bg-white/10 text-white/80 border border-white/10 hover:bg-white/15',
-                      ].join(' ')}
-                    >
-                      Plural forms <span className="opacity-60">({pluralPct}%)</span>
-                    </button>
-                  )}
-
-{/*                   <button
-                    type="button"
-                    onClick={() => setMode('match')}
-                    className={[
-                      'rounded-2xl px-4 py-3 text-sm font-semibold transition',
-                      mode === 'match'
-                        ? 'bg-white text-slate-950 shadow-lg shadow-white/10'
-                        : 'bg-white/10 text-white/80 border border-white/10 hover:bg-white/15',
-                    ].join(' ')}
-                  >
-                    Matching
-                  </button> */}
+                  <Select
+                    value={selectedLesson === null ? '' : String(selectedLesson)}
+                    onChange={(v) => setSelectedLesson(v ? Number(v) : null)}
+                    placeholder="Select lesson…"
+                    options={lessonOptions}
+                  />
                 </div>
-              </div>
 
-              {/* Count */}
-              <div className="mt-6 space-y-2">
-                <div className="text-md font-medium text-white/80">Number of words</div>
+                {/* Modes */}
+                <div className="mt-12 space-y-2">
+                  <div className="text-md font-medium text-white/80">Training mode</div>
 
-                <div
-                  className="
-                    rounded-2xl border border-white/10 bg-white/5 px-5 py-5
-                    flex gap-3 sm:items-center justify-between
-                  "
-                >
-                  <label className="min-w-0 flex items-center gap-3 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={allQuestions}
-                      onChange={(e) => setAllQuestions(e.target.checked)}
-                      className="h-4.5 w-4.5 accent-violet-400 cursor-pointer"
-                    />
-                    <span className="min-w-0 text-md text-white/80 truncate sm:hidden">All</span>
-                    <span className="min-w-0 text-md text-white/80 truncate hidden sm:inline">All words</span>
-                  </label>
-
-                  <div className="flex items-center gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <button
                       type="button"
-                      onClick={() => stepCount(-5)}
-                      disabled={allQuestions || count <= 5}
-                      className="
-                        flex-none rounded-xl border border-white/15 bg-white/10
-                        px-3 sm:px-4 py-2.5 text-base font-semibold text-white/85 cursor-pointer
-                        hover:bg-white/15
-                        disabled:opacity-50 disabled:cursor-default
-                        disabled:hover:bg-white/10
-                      "
+                      onClick={() => setMode('cards')}
+                      className={[
+                        'rounded-2xl px-4 py-3 text-sm font-semibold transition',
+                        mode === 'cards'
+                          ? 'bg-white text-slate-950 shadow-lg shadow-white/10'
+                          : 'bg-white/10 text-white/80 border border-white/10 hover:bg-white/15',
+                      ].join(' ')}
                     >
-                      −
+                      Cards review <span className="opacity-60">({cardsPct}%)</span>
                     </button>
-
-                    <div
-                      aria-live="polite"
-                      className={`w-[9ch] rounded-xl border px-3 sm:px-4 py-2.5 text-center text-base select-none
-                        ${
-                          allQuestions
-                            ? 'border-white/10 bg-white/5 text-white/40'
-                            : 'border-white/15 bg-white/10 text-white'
-                        }`}
-                    >
-                      {count}
-                    </div>
 
                     <button
                       type="button"
-                      onClick={() => stepCount(5)}
-                      disabled={allQuestions || count >= 50}
-                      className="
-                        flex-none rounded-xl border border-white/15 bg-white/10
-                        px-3 sm:px-4 py-2.5 text-base font-semibold text-white/85 cursor-pointer
-                        hover:bg-white/15
-                        disabled:opacity-50 disabled:cursor-default
-                        disabled:hover:bg-white/10
-                      "
+                      onClick={() => setMode('single')}
+                      className={[
+                        'rounded-2xl px-4 py-3 text-sm font-semibold transition',
+                        mode === 'single'
+                          ? 'bg-white text-slate-950 shadow-lg shadow-white/10'
+                          : 'bg-white/10 text-white/80 border border-white/10 hover:bg-white/15',
+                      ].join(' ')}
                     >
-                      +
+                      Single choice <span className="opacity-60">({singlePct}%)</span>
                     </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setMode('writing')}
+                      className={[
+                        'rounded-2xl px-4 py-3 text-sm font-semibold transition',
+                        mode === 'writing'
+                          ? 'bg-white text-slate-950 shadow-lg shadow-white/10'
+                          : 'bg-white/10 text-white/80 border border-white/10 hover:bg-white/15',
+                      ].join(' ')}
+                    >
+                      Writing <span className="opacity-60">({writingPct}%)</span>
+                    </button>
+
+                    {hasNounsInLesson && (
+                      <button
+                        type="button"
+                        onClick={() => setMode('articles')}
+                        className={[
+                          'rounded-2xl px-4 py-3 text-sm font-semibold transition',
+                          mode === 'articles'
+                            ? 'bg-white text-slate-950 shadow-lg shadow-white/10'
+                            : 'bg-white/10 text-white/80 border border-white/10 hover:bg-white/15',
+                        ].join(' ')}
+                      >
+                        Articles <span className="opacity-60">({articlesPct}%)</span>
+                      </button>
+                    )}
+
+                    {hasNounsInLesson && (
+                      <button
+                        type="button"
+                        onClick={() => setMode('plural')}
+                        className={[
+                          'rounded-2xl px-4 py-3 text-sm font-semibold transition',
+                          mode === 'plural'
+                            ? 'bg-white text-slate-950 shadow-lg shadow-white/10'
+                            : 'bg-white/10 text-white/80 border border-white/10 hover:bg-white/15',
+                        ].join(' ')}
+                      >
+                        Plural forms <span className="opacity-60">({pluralPct}%)</span>
+                      </button>
+                    )}
+
+  {/*                   <button
+                      type="button"
+                      onClick={() => setMode('match')}
+                      className={[
+                        'rounded-2xl px-4 py-3 text-sm font-semibold transition',
+                        mode === 'match'
+                          ? 'bg-white text-slate-950 shadow-lg shadow-white/10'
+                          : 'bg-white/10 text-white/80 border border-white/10 hover:bg-white/15',
+                      ].join(' ')}
+                    >
+                      Matching
+                    </button> */}
                   </div>
                 </div>
-              </div>
 
-              <button
-                type="button"
-                onClick={start}
-                disabled={!canStart}
-                className="mt-12 w-full rounded-2xl bg-white px-4 py-3.5 text-base font-semibold text-slate-950 shadow-lg shadow-white/10 transition hover:-translate-y-[1px] hover:shadow-xl active:translate-y-0 disabled:opacity-60"
-              >
-                Start
-              </button>
+                {/* Count */}
+                <div className="mt-6 space-y-2">
+                  <div className="text-md font-medium text-white/80">Number of words</div>
+
+                  <div
+                    className="
+                      rounded-2xl border border-white/10 bg-white/5 px-5 py-5
+                      flex gap-3 sm:items-center justify-between
+                    "
+                  >
+                    <label className="min-w-0 flex items-center gap-3 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={allQuestions}
+                        onChange={(e) => setAllQuestions(e.target.checked)}
+                        className="h-4.5 w-4.5 accent-violet-400 cursor-pointer"
+                      />
+                      <span className="min-w-0 text-md text-white/80 truncate sm:hidden">All</span>
+                      <span className="min-w-0 text-md text-white/80 truncate hidden sm:inline">All words</span>
+                    </label>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => stepCount(-5)}
+                        disabled={allQuestions || count <= 5}
+                        className="
+                          flex-none rounded-xl border border-white/15 bg-white/10
+                          px-3 sm:px-4 py-2.5 text-base font-semibold text-white/85 cursor-pointer
+                          hover:bg-white/15
+                          disabled:opacity-50 disabled:cursor-default
+                          disabled:hover:bg-white/10
+                        "
+                      >
+                        −
+                      </button>
+
+                      <div
+                        aria-live="polite"
+                        className={`w-[9ch] rounded-xl border px-3 sm:px-4 py-2.5 text-center text-base select-none
+                          ${
+                            allQuestions
+                              ? 'border-white/10 bg-white/5 text-white/40'
+                              : 'border-white/15 bg-white/10 text-white'
+                          }`}
+                      >
+                        {count}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => stepCount(5)}
+                        disabled={allQuestions || count >= 50}
+                        className="
+                          flex-none rounded-xl border border-white/15 bg-white/10
+                          px-3 sm:px-4 py-2.5 text-base font-semibold text-white/85 cursor-pointer
+                          hover:bg-white/15
+                          disabled:opacity-50 disabled:cursor-default
+                          disabled:hover:bg-white/10
+                        "
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={start}
+                  disabled={!canStart}
+                  className="mt-12 w-full rounded-2xl bg-white px-4 py-3.5 text-base font-semibold text-slate-950 shadow-lg shadow-white/10 transition hover:-translate-y-[1px] hover:shadow-xl active:translate-y-0 disabled:opacity-60"
+                >
+                  Start
+                </button>
+                </>
+              )}
             </div>
           </div>
         </div>
