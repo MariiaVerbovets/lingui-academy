@@ -62,6 +62,7 @@ type WordForm = {
   language: Language
   word_singular: string
   word_plural: string
+  transcription: string
   article_singular: string
   article_plural: string
   translation_ru: string
@@ -83,6 +84,7 @@ type WordField =
   | 'lesson'
   | 'word_singular'
   | 'word_plural'
+  | 'transcription'
   | 'article_singular'
   | 'article_plural'
   | 'translation_en'
@@ -120,6 +122,7 @@ export default function AdminCreateContentTab({ isOwner }: { isOwner: boolean })
     language: 'DE',
     word_singular: '',
     word_plural: '',
+    transcription: '',
     article_singular: '',
     article_plural: '',
     translation_ru: '',
@@ -175,6 +178,23 @@ export default function AdminCreateContentTab({ isOwner }: { isOwner: boolean })
     } catch {
       return false
     }
+  }
+
+  const normalizeTranscription = (v: string) => {
+    const raw = (v ?? '').trim()
+    if (!raw) return null
+
+    let next = raw
+
+    if (!next.startsWith('[')) {
+      next = `[${next}`
+    }
+
+    if (!next.endsWith(']')) {
+      next = `${next}]`
+    }
+
+    return next
   }
 
   const validateBookForm = (f: BookForm): BookErrors => {
@@ -390,6 +410,7 @@ export default function AdminCreateContentTab({ isOwner }: { isOwner: boolean })
     setBookImageFile(null)
     setWF('picture', '')
     setBF('picture', '')
+    setWF('transcription', '')
   }, [mode])
 
   const submitBook = async (e: React.FormEvent) => {
@@ -556,6 +577,9 @@ export default function AdminCreateContentTab({ isOwner }: { isOwner: boolean })
       language: wordForm.language,
       word_singular: singular,
       word_plural: plural || null,
+      transcription: wordForm.language === 'PT'
+        ? normalizeTranscription(wordForm.transcription)
+        : null,
       article_singular:
         singArticle && cfg.singular.map((x) => x.toLowerCase()).includes(singArticle)
           ? singArticle
@@ -592,6 +616,7 @@ export default function AdminCreateContentTab({ isOwner }: { isOwner: boolean })
       ...p,
       word_singular: '',
       word_plural: '',
+      transcription: '',
       article_singular: '',
       article_plural: '',
       translation_ru: '',
@@ -771,10 +796,14 @@ export default function AdminCreateContentTab({ isOwner }: { isOwner: boolean })
                 <Select
                   value={wordForm.language}
                   onChange={(v) => {
-                    setWF('language', v as Language)
+                    const nextLang = v as Language
+                    setWF('language', nextLang)
                     setWF('book_id', '')
                     setWF('topic_id', '')
                     setWF('picture', '')
+                    if (nextLang === 'DE') {
+                      setWF('transcription', '')
+                    }
                     setWordImageFile(null)
                   }}
                   options={languageOptions}
@@ -829,7 +858,7 @@ export default function AdminCreateContentTab({ isOwner }: { isOwner: boolean })
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-12">
               <div className="sm:col-span-6 rounded-2xl border border-white/10 bg-white/5 p-5">
                 <p className="text-white font-semibold text-base leading-none">Word</p>
-                <div className="mt-4 grid grid-cols-1 gap-3">
+                <div className="mt-4 grid grid-cols-1">
                   <div className="grid gap-2">
                     <label className="text-sm text-white/60">Singular</label>
                     <input
@@ -849,6 +878,18 @@ export default function AdminCreateContentTab({ isOwner }: { isOwner: boolean })
                     />
                     <FieldError msg={wordErrors.word_plural} />
                   </div>
+
+                  {wordForm.language === 'PT' && (
+                    <div className="grid gap-2">
+                      <label className="text-sm text-white/60">Transcription</label>
+                      <input
+                        value={wordForm.transcription}
+                        onChange={(e) => setWF('transcription', e.target.value)}
+                        className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
+                      />
+                      <FieldError />
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -857,7 +898,7 @@ export default function AdminCreateContentTab({ isOwner }: { isOwner: boolean })
                 {(() => {
                   const cfg = ARTICLES_BY_LANGUAGE[wordForm.language]
                   return (
-                    <div className="mt-4 grid grid-cols-1 gap-3">
+                    <div className="mt-4 grid grid-cols-1">
                       <div className="grid gap-2">
                         <label className="text-sm text-white/60">Singular</label>
                         <ArticleChips
@@ -982,7 +1023,8 @@ export default function AdminCreateContentTab({ isOwner }: { isOwner: boolean })
                   value={wordForm.tasks}
                   onChange={(e) => setWF('tasks', e.target.value)}
                   className={[
-                    'h-full min-h-[320px] w-full resize-none',
+                    isOwner ? 'min-h-[320px]' : 'min-h-[260px]',
+                    'h-full w-full resize-none',
                     'rounded-2xl border border-white/15 bg-white/10 px-4 py-3',
                     'text-white outline-none',
                     'focus:border-white/25 focus:ring-2 focus:ring-white/10',
