@@ -95,18 +95,16 @@ type BookErrors = Partial<Record<BookField, string>>
 type TopicErrors = Partial<Record<TopicField, string>>
 type WordErrors = Partial<Record<WordField, string>>
 
-export default function AdminCreateContentTab() {
+export default function AdminCreateContentTab({ isOwner }: { isOwner: boolean }) {
   const [loading, setLoading] = useState(true)
   const [mode, setMode] = useState<Mode>('word')
 
   const [books, setBooks] = useState<Book[]>([])
   const [topics, setTopics] = useState<Topic[]>([])
 
-  // Global (server/network) messages
   const [error, setError] = useState<string | null>(null)
   const [ok, setOk] = useState<string | null>(null)
 
-  // Forms
   const [bookForm, setBookForm] = useState<BookForm>({
     language: 'DE',
     name: '',
@@ -137,7 +135,6 @@ export default function AdminCreateContentTab() {
   const [wordImageFile, setWordImageFile] = useState<File | null>(null)
   const [bookImageFile, setBookImageFile] = useState<File | null>(null)
 
-  // Inline validation state
   const [bookErrors, setBookErrors] = useState<BookErrors>({})
   const [topicErrors, setTopicErrors] = useState<TopicErrors>({})
   const [wordErrors, setWordErrors] = useState<WordErrors>({})
@@ -168,10 +165,27 @@ export default function AdminCreateContentTab() {
     })
   }
 
+  const isValidHttpUrl = (v: string) => {
+    const s = (v ?? '').trim()
+    if (!s) return false
+
+    try {
+      const u = new URL(s)
+      return u.protocol === 'http:' || u.protocol === 'https:'
+    } catch {
+      return false
+    }
+  }
+
   const validateBookForm = (f: BookForm): BookErrors => {
     const errs: BookErrors = {}
     if (!f.language) errs.language = 'Choose a language'
     if (!f.name.trim()) errs.name = 'Book name required'
+
+    if (isOwner && f.picture.trim() && !isValidHttpUrl(f.picture)) {
+      errs.picture = 'Enter a valid image URL'
+    }
+
     return errs
   }
 
@@ -229,6 +243,10 @@ export default function AdminCreateContentTab() {
       errs.tasks = 'Tasks should be a valid JSON'
     }
 
+    if (isOwner && f.picture.trim() && !isValidHttpUrl(f.picture)) {
+      errs.picture = 'Enter a valid image URL'
+    }
+
     return errs
   }
 
@@ -262,7 +280,6 @@ export default function AdminCreateContentTab() {
     })
   }
 
-  // Keep selected article values valid for chosen language
   useEffect(() => {
     const cfg = ARTICLES_BY_LANGUAGE[wordForm.language]
     if (!cfg) return
@@ -386,22 +403,32 @@ export default function AdminCreateContentTab() {
     setBookErrors(errs)
     if (Object.keys(errs).length > 0) return
 
-    if (!bookImageFile) {
+    let pictureUrl = bookForm.picture.trim()
+    let uploadedUrlForCleanup: string | null = null
+
+    if (bookImageFile) {
+      const baseName = buildBookBase(bookForm.name)
+      const uploadedUrl = await uploadWithIncrement(bookImageFile, {
+        entity: 'books',
+        language: bookForm.language,
+        baseName,
+      })
+      pictureUrl = uploadedUrl
+      uploadedUrlForCleanup = uploadedUrl
+    } else if (isOwner && pictureUrl) {
+      if (!isValidHttpUrl(pictureUrl)) {
+        setBookErrors((p) => ({ ...p, picture: 'Enter a valid image URL' }))
+        return
+      }
+    } else {
       setBookErrors((p) => ({ ...p, picture: 'Picture required' }))
       return
     }
 
-    const baseName = buildBookBase(bookForm.name)
-    const uploadedUrl = await uploadWithIncrement(bookImageFile, {
-      entity: 'books',
-      language: bookForm.language,
-      baseName,
-    })
-
     const payload = {
       language: bookForm.language,
       name: bookForm.name.trim(),
-      picture: uploadedUrl,
+      picture: pictureUrl,
     }
 
     const { error: insErr } = await supabase
@@ -411,9 +438,11 @@ export default function AdminCreateContentTab() {
       .single()
 
     if (insErr) {
-      try {
-        await removeFromImagesBucketByPublicUrl(uploadedUrl)
-      } catch {}
+      if (uploadedUrlForCleanup) {
+        try {
+          await removeFromImagesBucketByPublicUrl(uploadedUrlForCleanup)
+        } catch {}
+      }
       setError(insErr.message)
       return
     }
@@ -427,7 +456,6 @@ export default function AdminCreateContentTab() {
     await refetchAll()
   }
 
-  // ---------- Save topic ----------
   const submitTopic = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -462,7 +490,6 @@ export default function AdminCreateContentTab() {
     await refetchAll()
   }
 
-  // ---------- Save word ----------
   const submitWord = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -474,27 +501,36 @@ export default function AdminCreateContentTab() {
     setWordErrors(errs)
     if (Object.keys(errs).length > 0) return
 
-    if (!wordImageFile) {
+    let pictureUrl = wordForm.picture.trim()
+    let uploadedUrlForCleanup: string | null = null
+
+    if (wordImageFile) {
+      const topicName = topics.find((t) => String(t.id) === String(wordForm.topic_id))?.name ?? '-'
+      const baseName = buildWordBase({
+        lesson: wordForm.lesson,
+        topicName,
+        wordSingular: wordForm.word_singular,
+        wordPlural: wordForm.word_plural,
+      })
+
+      const uploadedUrl = await uploadWithIncrement(wordImageFile, {
+        entity: 'words',
+        language: wordForm.language,
+        baseName,
+      })
+
+      pictureUrl = uploadedUrl
+      uploadedUrlForCleanup = uploadedUrl
+    } else if (isOwner && pictureUrl) {
+      if (!isValidHttpUrl(pictureUrl)) {
+        setWordErrors((p) => ({ ...p, picture: 'Enter a valid image URL' }))
+        return
+      }
+    } else {
       setWordErrors((p) => ({ ...p, picture: 'Picture required' }))
       return
     }
 
-    // 1) upload first
-    const topicName = topics.find((t) => String(t.id) === String(wordForm.topic_id))?.name ?? '-'
-    const baseName = buildWordBase({
-      lesson: wordForm.lesson,
-      topicName,
-      wordSingular: wordForm.word_singular,
-      wordPlural: wordForm.word_plural,
-    })
-
-    const uploadedUrl = await uploadWithIncrement(wordImageFile, {
-      entity: 'words',
-      language: wordForm.language,
-      baseName,
-    })
-
-    // 2) build payload
     const lessonNum = Number(wordForm.lesson)
     const singular = wordForm.word_singular.trim()
     const plural = wordForm.word_plural.trim()
@@ -503,9 +539,11 @@ export default function AdminCreateContentTab() {
     try {
       tasksJson = JSON.parse(wordForm.tasks || '[]')
     } catch {
-      try {
-        await removeFromImagesBucketByPublicUrl(uploadedUrl)
-      } catch {}
+      if (uploadedUrlForCleanup) {
+        try {
+          await removeFromImagesBucketByPublicUrl(uploadedUrlForCleanup)
+        } catch {}
+      }
       setWordErrors((p) => ({ ...p, tasks: 'Tasks should be a valid JSON' }))
       return
     }
@@ -518,24 +556,32 @@ export default function AdminCreateContentTab() {
       language: wordForm.language,
       word_singular: singular,
       word_plural: plural || null,
-      article_singular: singArticle && cfg.singular.map((x) => x.toLowerCase()).includes(singArticle) ? singArticle : null,
-      article_plural: plArticle && cfg.plural.map((x) => x.toLowerCase()).includes(plArticle) ? plArticle : null,
+      article_singular:
+        singArticle && cfg.singular.map((x) => x.toLowerCase()).includes(singArticle)
+          ? singArticle
+          : null,
+      article_plural:
+        plArticle && cfg.plural.map((x) => x.toLowerCase()).includes(plArticle)
+          ? plArticle
+          : null,
       translation_ru: wordForm.translation_ru.trim(),
       translation_ukr: wordForm.translation_ukr.trim(),
       translation_en: wordForm.translation_en.trim(),
       book_id: Number(wordForm.book_id),
       lesson: lessonNum,
       topic_id: Number(wordForm.topic_id),
-      picture: uploadedUrl,
+      picture: pictureUrl,
       tasks: tasksJson,
     }
 
-    // 3) insert
     const { error: insErr } = await supabase.from('words').insert(payload)
+
     if (insErr) {
-      try {
-        await removeFromImagesBucketByPublicUrl(uploadedUrl)
-      } catch {}
+      if (uploadedUrlForCleanup) {
+        try {
+          await removeFromImagesBucketByPublicUrl(uploadedUrlForCleanup)
+        } catch {}
+      }
       setError(insErr.message)
       return
     }
@@ -614,7 +660,6 @@ export default function AdminCreateContentTab() {
 
   return (
     <>
-      {/* Mode switch */}
       <div className="mt-6 flex flex-wrap gap-8">
         {MODE_ITEMS.map((m) => (
           <label key={m.key} className="flex items-center gap-2 cursor-pointer select-none rounded-xl py-2 transition">
@@ -635,17 +680,17 @@ export default function AdminCreateContentTab() {
             >
               <span className={['h-3 w-3 rounded-full transition', mode === m.key ? 'bg-violet-400' : 'bg-transparent'].join(' ')} />
             </span>
-            <span className={['text-md text-white/90', mode === m.key ? 'font-semibold' : ''].join(' ')}>{m.label}</span>
+            <span className={['text-md text-white/90', mode === m.key ? 'font-semibold' : ''].join(' ')}>
+              {m.label}
+            </span>
           </label>
         ))}
       </div>
 
-      {/* Global messages */}
       {error && <div className="mt-5 inline-flex rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-md text-red-200">{error}</div>}
       {ok && <div className="mt-5 inline-flex rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm text-emerald-200">{ok}</div>}
 
       <div className="mt-6">
-        {/* BOOK FORM */}
         {mode === 'book' ? (
           <form onSubmit={submitBook} noValidate className="grid gap-4">
             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-12 sm:gap-x-12">
@@ -683,6 +728,7 @@ export default function AdminCreateContentTab() {
                 deferred
                 onPickFile={(file) => {
                   setBookImageFile(file)
+                  setBF('picture', '')
                 }}
                 onError={(msg) => setError(msg)}
                 canPick={() => {
@@ -690,6 +736,23 @@ export default function AdminCreateContentTab() {
                   return { ok: true }
                 }}
               />
+
+              {isOwner && (
+                <div className="mt-3 grid gap-2">
+                  <input
+                    value={bookForm.picture}
+                    onChange={(e) => {
+                      setBF('picture', e.target.value)
+                      if (e.target.value.trim()) {
+                        setBookImageFile(null)
+                      }
+                    }}
+                    placeholder="Image URL"
+                    className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
+                  />
+                </div>
+              )}
+
               <FieldError msg={bookErrors.picture} />
             </div>
 
@@ -701,7 +764,6 @@ export default function AdminCreateContentTab() {
             </button>
           </form>
         ) : mode === 'word' ? (
-          /* WORD FORM */
           <form onSubmit={submitWord} noValidate className="grid gap-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-12 sm:gap-x-5">
               <div className="grid gap-2 sm:col-span-2">
@@ -764,9 +826,7 @@ export default function AdminCreateContentTab() {
               </div>
             </div>
 
-            {/* Word + Article */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-12">
-              {/* WORD */}
               <div className="sm:col-span-6 rounded-2xl border border-white/10 bg-white/5 p-5">
                 <p className="text-white font-semibold text-base leading-none">Word</p>
                 <div className="mt-4 grid grid-cols-1 gap-3">
@@ -792,7 +852,6 @@ export default function AdminCreateContentTab() {
                 </div>
               </div>
 
-              {/* ARTICLE */}
               <div className="sm:col-span-6 rounded-2xl border border-white/10 bg-white/5 p-5">
                 <p className="text-white font-semibold text-base leading-none">Article</p>
                 {(() => {
@@ -824,7 +883,6 @@ export default function AdminCreateContentTab() {
               </div>
             </div>
 
-            {/* Translations */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-12 sm:items-start border border-white/10 bg-white/5 rounded-2xl p-5">
               <div className="sm:col-span-12">
                 <p className="text-white font-semibold text-base leading-none">Translations</p>
@@ -862,40 +920,69 @@ export default function AdminCreateContentTab() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-6">
-              <div className="grid gap-2 sm:col-span-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-6 sm:items-stretch">
+              <div className="grid gap-2 sm:col-span-2 h-full">
                 <label className="text-md text-white/80">Picture</label>
-                <ImageUploader
-                  value={wordForm.picture}
-                  deferred
-                  onPickFile={(file) => {
-                    setWordImageFile(file)
-                  }}
-                  canPick={() => {
-                    const lessonNum = Number(wordForm.lesson)
-                    if (!Number.isFinite(lessonNum) || lessonNum < 1) return { ok: false, message: 'Enter correct lesson number.' }
-                    if (!wordForm.topic_id.trim()) return { ok: false, message: 'Select a topic first.' }
 
-                    const singular = wordForm.word_singular.trim()
-                    const plural = wordForm.word_plural.trim()
+                <div className="flex h-full min-h-0 flex-col gap-3">
+                  <div className="flex-1 min-h-0">
+                    <ImageUploader
+                      value={wordForm.picture}
+                      resetKey={wordResetKey}
+                      deferred
+                      onPickFile={(file) => {
+                        setWordImageFile(file)
+                        setWF('picture', '')
+                      }}
+                      canPick={() => {
+                        const lessonNum = Number(wordForm.lesson)
+                        if (!Number.isFinite(lessonNum) || lessonNum < 1) {
+                          return { ok: false, message: 'Enter correct lesson number.' }
+                        }
+                        if (!wordForm.topic_id.trim()) {
+                          return { ok: false, message: 'Select a topic first.' }
+                        }
 
-                    if (!singular) return { ok: false, message: 'Enter word (singular) first.' }
-                    if (singular === '-' && !plural) return { ok: false, message: 'If singular is "-", enter plural first.' }
+                        const singular = wordForm.word_singular.trim()
+                        const plural = wordForm.word_plural.trim()
 
-                    return { ok: true }
-                  }}
-                  onError={(msg) => setError(msg)}
-                />
+                        if (!singular) return { ok: false, message: 'Enter word (singular) first.' }
+                        if (singular === '-' && !plural) {
+                          return { ok: false, message: 'If singular is "-", enter plural first.' }
+                        }
+
+                        return { ok: true }
+                      }}
+                      onError={(msg) => setError(msg)}
+                    />
+                  </div>
+
+                  {isOwner && (
+                    <input
+                      value={wordForm.picture}
+                      onChange={(e) => {
+                        setWF('picture', e.target.value)
+                        if (e.target.value.trim()) {
+                          setWordImageFile(null)
+                        }
+                      }}
+                      placeholder="Image URL"
+                      className="w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/25 focus:ring-2 focus:ring-white/10"
+                    />
+                  )}
+                </div>
+
                 <FieldError msg={wordErrors.picture} />
               </div>
 
-              <div className="grid gap-2 sm:col-span-4">
+              <div className="grid gap-2 sm:col-span-4 h-full">
                 <label className="text-md text-white/80">Tasks (optional)</label>
+
                 <textarea
                   value={wordForm.tasks}
                   onChange={(e) => setWF('tasks', e.target.value)}
                   className={[
-                    'h-65 w-full resize-none',
+                    'h-full min-h-[320px] w-full resize-none',
                     'rounded-2xl border border-white/15 bg-white/10 px-4 py-3',
                     'text-white outline-none',
                     'focus:border-white/25 focus:ring-2 focus:ring-white/10',
@@ -903,6 +990,7 @@ export default function AdminCreateContentTab() {
                   ].join(' ')}
                   placeholder="[]"
                 />
+
                 <FieldError msg={wordErrors.tasks} />
               </div>
             </div>
@@ -915,7 +1003,6 @@ export default function AdminCreateContentTab() {
             </button>
           </form>
         ) : (
-          /* TOPIC FORM */
           <form onSubmit={submitTopic} noValidate className="grid gap-4">
             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-12 sm:gap-x-12">
               <div className="grid gap-2 sm:col-span-3">

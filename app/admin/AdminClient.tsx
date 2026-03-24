@@ -134,7 +134,7 @@ export default function AdminClient() {
               {/* Tab content */}
               <div className="mt-8">
                 <section className={tab === 'create' ? 'block' : 'hidden'} aria-hidden={tab !== 'create'}>
-                  <AdminCreateContentTab />
+                  <AdminCreateContentTab isOwner={isOwner}/>
                 </section>
 
                 {isOwner && (
