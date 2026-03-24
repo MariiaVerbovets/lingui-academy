@@ -11,6 +11,7 @@ export type WordRow = {
   translation_ukr: string | null
   translation_en: string | null
   picture: string | null
+  transcription: string | null
 }
 
 export type PoolRow = { id: number; word_singular: string; article_singular: string | null; word_plural: string | null }

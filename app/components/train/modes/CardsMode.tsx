@@ -22,6 +22,7 @@ export function CardsMode({
   onRemembered,
 }: CardsModeProps) {
   const wordText = formatCardsWord(current)
+  const hasPicture = !!current.picture?.trim()
 
   return (
     <>
@@ -49,10 +50,12 @@ export function CardsMode({
             <div className="absolute inset-0 [backface-visibility:hidden] [transform:rotateY(180deg)]">
               <div className="relative h-full w-full overflow-hidden rounded-2xl border border-white/10">
                 {/* Background image */}
-                <div
-                  className="absolute inset-0 bg-cover bg-center"
-                  style={{ backgroundImage: `url(${current.picture})` }}
-                />
+                {hasPicture && (
+                  <div
+                    className="absolute inset-0 bg-cover bg-center"
+                    style={{ backgroundImage: `url(${current.picture})` }}
+                  />
+                )}
 
                 {/* Dark overlay (dim) */}
                 <div className="absolute inset-0 bg-slate-950/80" />
@@ -61,6 +64,11 @@ export function CardsMode({
                 <div className="relative h-full w-full p-5 flex flex-col justify-center">
                   <div className="text-center">
                     <div className="text-2xl font-semibold text-white drop-shadow-sm">{wordText}</div>
+                    <div className="mt-4 text-2xl text-white/95 font-medium drop-shadow-sm">
+                      {current.transcription && (
+                        <span>{current.transcription}</span>
+                      )}
+                    </div>
                     <div className="mt-4 text-2xl text-white/95 font-medium drop-shadow-sm">
                       {translation ? (
                         <span>{translation}</span>
