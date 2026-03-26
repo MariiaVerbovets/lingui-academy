@@ -1,9 +1,17 @@
 'use client'
 
-import { ARTICLES } from '@/lib/constants'
+import { getArticlesForLanguage } from '@/lib/constants'
 import { getSingleTargetArticle } from '@/lib/utils'
-import { SingleModeProps } from '@/lib/types'
+import type { SingleModeProps } from '@/lib/types'
 import { WordImage } from '@/app/components/train/WordImage'
+
+const normalizeA = (v: string | null | undefined) => (v ?? '').trim().toLowerCase()
+
+function getArticlesGridClass(length: number) {
+  if (length <= 2) return 'grid-cols-2'
+  if (length === 3) return 'grid-cols-3'
+  return 'grid-cols-2 sm:grid-cols-4'
+}
 
 export function SingleMode({
   current,
@@ -15,9 +23,10 @@ export function SingleMode({
   options,
   onSelectArticle,
   onAnswer,
+  lang,
 }: SingleModeProps) {
-  const normalizeA = (v: string | null | undefined) => (v ?? '').trim().toLowerCase()
   const correctArticle = normalizeA(getSingleTargetArticle(current)) || null
+  const articles = getArticlesForLanguage(lang)
 
   return (
     <>
@@ -25,8 +34,8 @@ export function SingleMode({
       <div className="mt-4 text-center text-xl font-semibold text-white">{promptText}</div>
 
       {needsArticle && (
-        <div className="mt-6 grid grid-cols-3 gap-2">
-          {ARTICLES.map((a) => {
+        <div className={`mt-6 grid gap-2 ${getArticlesGridClass(articles.length)}`}>
+          {articles.map((a, idx) => {
             const aNorm = normalizeA(a)
             const selNorm = normalizeA(selectedArticle)
 
@@ -35,7 +44,7 @@ export function SingleMode({
             const isWrongSel = answered && isSel && !isCorrect
 
             const cls = [
-              'rounded-2xl px-4 py-3 text-lg font-semibold transition border',
+              'relative rounded-2xl px-4 py-3 text-lg font-semibold transition border',
               isCorrect
                 ? 'bg-emerald-500/15 text-emerald-100 border-emerald-400/30'
                 : isWrongSel
@@ -53,8 +62,10 @@ export function SingleMode({
                 disabled={answered}
                 onClick={() => onSelectArticle(a)}
                 className={cls}
+                aria-label={`${a}. Keyboard: ${idx + 1}`}
+                title={`Keyboard: ${idx + 1}`}
               >
-                {a}
+                <span>{a}</span>
               </button>
             )
           })}
@@ -73,7 +84,11 @@ export function SingleMode({
           const wrong = 'bg-red-500/15 text-red-100 border-red-400/30'
           const disabled = 'opacity-80'
 
-          const cls = [base, showCorrect ? correct : showWrong ? wrong : normal, answered ? disabled : ''].join(' ')
+          const cls = [
+            base,
+            showCorrect ? correct : showWrong ? wrong : normal,
+            answered ? disabled : '',
+          ].join(' ')
 
           return (
             <button

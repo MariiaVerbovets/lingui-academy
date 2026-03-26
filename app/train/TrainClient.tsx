@@ -600,6 +600,7 @@ const submitTypedAnswer = async () => {
                       setSelectedArticle(a ? (a.trim().toLowerCase() as Article) : null)
                     }
                     onAnswer={answerSingle}
+                    lang={lang}
                   />
                 )}
 
@@ -609,6 +610,7 @@ const submitTypedAnswer = async () => {
                     answered={answered}
                     selectedArticle={selectedArticle}
                     onAnswer={answerArticles}
+                    lang={lang}
                   />
                 )}
 

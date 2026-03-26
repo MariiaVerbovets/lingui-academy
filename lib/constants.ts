@@ -14,7 +14,17 @@ export const PRAISE_LINES = [
   'Excellent session! 🧠',
 ] as const
 
-export const ARTICLES: Article[] = ['der', 'die', 'das']
+export type TrainingLanguage = 'german' | 'portuguese'
+
+export const ARTICLES_BY_LANGUAGE: Record<TrainingLanguage, Article[]> = {
+  german: ['der', 'die', 'das'],
+  portuguese: ['o', 'a', 'os', 'as'],
+}
+
+export const getArticlesForLanguage = (lang?: string | null): Article[] => {
+  if (lang === 'portuguese') return ARTICLES_BY_LANGUAGE.portuguese
+  return ARTICLES_BY_LANGUAGE.german
+}
 
 export const NATIVE_ITEMS: Array<{
   key: NativeLanguage

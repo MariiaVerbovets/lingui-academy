@@ -22,7 +22,7 @@ export type Option = {
   isCorrect: boolean
 }
 
-export type Article = 'der' | 'die' | 'das'
+export type Article = 'der' | 'die' | 'das' | 'o' | 'a' | 'os' | 'as'
 
 export type FormState = {
   user_id: string
@@ -64,18 +64,5 @@ export type SingleModeProps = {
   options: Option[]
   onSelectArticle: (a: Article) => void
   onAnswer: (opt: Option) => void
-}
-
-export type ArticlesModeProps = {
-  current: {
-    picture: string | null
-    word_singular: string
-    word_plural: string | null
-    article_singular: string | null
-    article_plural: string | null
-  }
-  promptWord: string
-  selectedArticle: Article | null
-  answered: boolean
-  onAnswer: (a: Article) => void
+  lang?: string | null
 }
