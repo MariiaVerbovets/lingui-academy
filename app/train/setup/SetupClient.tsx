@@ -181,14 +181,15 @@ export default function SetupClient({ bookId }: { bookId: string }) {
   const writingPct = selectedRow?.writing_percent ?? 0
   const articlesPct = selectedRow?.articles_percent ?? 0
   const pluralPct = selectedRow?.plural_percent ?? 0
-  const hasNounsInLesson = (selectedRow?.total_articles_words ?? 0) > 0 || (selectedRow?.total_plural_words ?? 0) > 0
+  const hasWordsForArticlesTraining = (selectedRow?.total_articles_words ?? 0) > 0
+  const hasWordsForPluralTraining =  (selectedRow?.total_plural_words ?? 0) > 0
 
   useEffect(() => {
     if (!selectedRow) return
-    if (!hasNounsInLesson && (mode === 'articles' || mode === 'plural')) {
+    if (!hasWordsForArticlesTraining && (mode === 'articles') || (!hasWordsForPluralTraining && (mode === 'plural'))) {
       setMode('cards')
     }
-  }, [selectedRow, hasNounsInLesson, mode])
+  }, [selectedRow, hasWordsForArticlesTraining, hasWordsForPluralTraining, mode])
 
   const canStart = useMemo(() => {
     const baseOk =
@@ -202,12 +203,12 @@ export default function SetupClient({ bookId }: { bookId: string }) {
 
     if (!baseOk) return false
 
-    if ((mode === 'articles' || mode === 'plural') && !hasNounsInLesson) {
+    if ((mode === 'articles' && !hasWordsForArticlesTraining) || (mode === 'plural' && !hasWordsForPluralTraining)) {
       return false
     }
 
     return true
-  }, [bookId, selectedLesson, mode, hasNounsInLesson])
+  }, [bookId, selectedLesson, mode, hasWordsForArticlesTraining, hasWordsForPluralTraining])
 
   const start = () => {
     if (!canStart) return
@@ -367,7 +368,7 @@ export default function SetupClient({ bookId }: { bookId: string }) {
                       Writing <span className="opacity-60">({writingPct}%)</span>
                     </button>
 
-                    {hasNounsInLesson && (
+                    {hasWordsForArticlesTraining && (
                       <button
                         type="button"
                         onClick={() => setMode('articles')}
@@ -382,7 +383,7 @@ export default function SetupClient({ bookId }: { bookId: string }) {
                       </button>
                     )}
 
-                    {hasNounsInLesson && (
+                    {hasWordsForPluralTraining && (
                       <button
                         type="button"
                         onClick={() => setMode('plural')}
