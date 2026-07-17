@@ -49,7 +49,6 @@ export function pickRandom<T>(arr: T[], n: number): T[] {
 export function normalizeAnswer(s: string) {
   return s
     .trim()
-    .toLowerCase()
     .replace(/\s+/g, ' ')
 }
 
