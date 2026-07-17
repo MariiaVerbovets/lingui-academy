@@ -48,8 +48,11 @@ export function pickRandom<T>(arr: T[], n: number): T[] {
 
 export function normalizeAnswer(s: string) {
   return s
+    .normalize('NFC')
     .trim()
-    .replace(/\s+/g, ' ')
+    .replace(/[’‘ʼ`´]/g, "'")
+    .replace(/…/g, "...")
+    .replace(/\s+/g, " ")
 }
 
 /**
