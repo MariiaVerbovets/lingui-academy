@@ -514,10 +514,7 @@ const submitTypedAnswer = async () => {
         modeTitle={modeTitle}
         lesson={lesson}
         parsedLesson={parsedLesson}
-        resetError={resetError}
-        resetBusy={resetBusy}
         onBackToSetup={finishTraining}
-        onResetProgress={resetProgress}
       />
     )
   }

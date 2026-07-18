@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import Select from '../../components/Select'
 import { FlagCircle } from '../../languages/page'
 import AdminIcon from '@/app/components/AdminIcon'
 import SettingsBlock from '../../components/SettingsBlock'
+import { resetProgressForLesson } from '@/lib/trainApi'
 
 type TrainMode = 'cards' | 'single' | 'writing' | 'articles' | 'plural' | 'match'
 
@@ -50,7 +51,7 @@ export default function SetupClient({ bookId }: { bookId: string }) {
   const lessonFromUrl = sp.get('lesson')
   const rawCount = sp.get('count')
   const allFromUrl = sp.get('all') === '1'
-  const currentUrl = `/train/setup?${sp.toString()}`
+  const [resetBusy, setResetBusy] = useState(false)
 
   const [bookName, setBookName] = useState<string | null>(null)
   const [count, setCount] = useState<number>(() => parseCountFromUrl(rawCount, 10))
@@ -87,89 +88,114 @@ export default function SetupClient({ bookId }: { bookId: string }) {
     router.push('/languages')
   }
 
-  useEffect(() => {
-    const run = async () => {
+  const loadLessonsProgress = useCallback(async (showLoading = true) => {
+    if (showLoading) {
       setLoading(true)
-      setError(null)
+    }
+    setError(null)
 
-      const { data: sessionData } = await supabase.auth.getSession()
-      if (!sessionData.session) {
-        router.push('/login')
-        return
-      }
-
-      if (!bookId?.trim()) {
-        setError('Missing bookId.')
-        setRows([])
-        setSelectedLesson(null)
+    const { data: sessionData } = await supabase.auth.getSession()
+    if (!sessionData.session) {
+      if (showLoading) {
         setLoading(false)
-        return
       }
+      router.push('/login')
+      return
+    }
 
-      try {
-        const bookIdNum = Number(bookId)
+    if (!bookId?.trim()) {
+      setError('Missing bookId.')
+      setRows([])
+      setSelectedLesson(null)
+      if (showLoading) {
+        setLoading(false)
+      }
+      return
+    }
 
-        const [{ data: progress, error: progressErr }, { data: accessRows, error: accessErr }] =
-          await Promise.all([
-            supabase.rpc('get_book_lesson_progress', { p_book_id: bookIdNum }),
-            supabase.rpc('get_book_access_for_me', { p_book_id: bookIdNum }),
-          ])
+    try {
+      const bookIdNum = Number(bookId)
 
-        if (progressErr) throw progressErr
-        if (accessErr) throw accessErr
+      const [{ data: progress, error: progressErr }, { data: accessRows, error: accessErr }] =
+        await Promise.all([
+          supabase.rpc('get_book_lesson_progress', { p_book_id: bookIdNum }),
+          supabase.rpc('get_book_access_for_me', { p_book_id: bookIdNum }),
+        ])
 
-        // get_book_access_for_me returns ARRAY, so take first row (or null)
-        const accessRow = (accessRows?.[0] ?? null) as BookAccessRow | null
-        setBookName((accessRow?.book_name ?? '').trim() || null)
+      if (progressErr) throw progressErr
+      if (accessErr) throw accessErr
 
-        const allow = !!accessRow?.allow_all
-        const allowedArr = (accessRow?.allowed_lessons ?? [])
-          .map((x) => Number(x))
-          .filter((x) => Number.isFinite(x))
+      // get_book_access_for_me returns ARRAY, so take first row (or null)
+      const accessRow = (accessRows?.[0] ?? null) as BookAccessRow | null
+      setBookName((accessRow?.book_name ?? '').trim() || null)
 
-        const raw = (progress ?? []) as any[]
-        const normalized: RawLessonRow[] = raw.map((r) => ({
-          lesson: Number(r.lesson),
-          total_words: Number(r.total_words ?? 0),
-          total_articles_words: Number(r.total_articles_words ?? 0),
-          total_plural_words: Number(r.total_plural_words ?? 0),
-          cards_percent: Number(r.cards_percent ?? 0),
-          single_percent: Number(r.single_percent ?? 0),
-          writing_percent: Number(r.writing_percent ?? 0),
-          articles_percent: Number(r.articles_percent ?? 0),
-          plural_percent: Number(r.plural_percent ?? 0),
-          overall_percent: Number(r.overall_percent ?? 0),
-        }))
+      const allow = !!accessRow?.allow_all
+      const allowedArr = (accessRow?.allowed_lessons ?? [])
+        .map((x) => Number(x))
+        .filter((x) => Number.isFinite(x))
 
-        const allowedSet = new Set(allowedArr)
-        const visible = allow ? normalized : normalized.filter((r) => allowedSet.has(r.lesson))
+      const raw = (progress ?? []) as any[]
+      const normalized: RawLessonRow[] = raw.map((r) => ({
+        lesson: Number(r.lesson),
+        total_words: Number(r.total_words ?? 0),
+        total_articles_words: Number(r.total_articles_words ?? 0),
+        total_plural_words: Number(r.total_plural_words ?? 0),
+        cards_percent: Number(r.cards_percent ?? 0),
+        single_percent: Number(r.single_percent ?? 0),
+        writing_percent: Number(r.writing_percent ?? 0),
+        articles_percent: Number(r.articles_percent ?? 0),
+        plural_percent: Number(r.plural_percent ?? 0),
+        overall_percent: Number(r.overall_percent ?? 0),
+      }))
 
-        setRows(visible)
+      const allowedSet = new Set(allowedArr)
+      const visible = allow ? normalized : normalized.filter((r) => allowedSet.has(r.lesson))
 
-        if (visible.length) {
-          setSelectedLesson((prev) => {
-            if (prev !== null && visible.some((r) => r.lesson === prev)) return prev
-            if (
-              parsedLessonFromUrl &&
-              visible.some((r) => r.lesson === parsedLessonFromUrl)
-            )
-              return parsedLessonFromUrl
-            return visible[0].lesson
-          })
-        } else {
-          setSelectedLesson(null)
-        }
-      } catch (e: any) {
-        setError(e?.message ?? 'Unknown error')
-        setRows([])
+      setRows(visible)
+
+      if (visible.length) {
+        setSelectedLesson((prev) => {
+          if (prev !== null && visible.some((r) => r.lesson === prev)) return prev
+          if (
+            parsedLessonFromUrl &&
+            visible.some((r) => r.lesson === parsedLessonFromUrl)
+          )
+            return parsedLessonFromUrl
+          return visible[0].lesson
+        })
+      } else {
         setSelectedLesson(null)
-      } finally {
+      }
+    } catch (e: any) {
+      setError(e?.message ?? 'Unknown error')
+      setRows([])
+      setSelectedLesson(null)
+    } finally {
+      if (showLoading) {
         setLoading(false)
       }
     }
+  }, [bookId, parsedLessonFromUrl, router])
 
-    run()
-  }, [bookId, router, parsedLessonFromUrl])
+  const resetProgress = async () => {
+    if (!selectedLesson) return
+
+    setError(null)
+    setResetBusy(true)
+
+    try {
+      await resetProgressForLesson(Number(bookId), selectedLesson, mode)
+      await loadLessonsProgress(false)
+    } catch (e: any) {
+      setError(e?.message ?? 'Failed to reset progress')
+    } finally {
+      setResetBusy(false)
+    }
+  }
+
+  useEffect(() => {
+    loadLessonsProgress()
+  }, [loadLessonsProgress])
 
   const selectedRow = useMemo(() => {
     if (selectedLesson === null) return null
@@ -181,6 +207,27 @@ export default function SetupClient({ bookId }: { bookId: string }) {
   const writingPct = selectedRow?.writing_percent ?? 0
   const articlesPct = selectedRow?.articles_percent ?? 0
   const pluralPct = selectedRow?.plural_percent ?? 0
+
+  const selectedModePercent = useMemo(() => {
+    switch (mode) {
+      case 'cards':
+        return cardsPct
+      case 'single':
+        return singlePct
+      case 'writing':
+        return writingPct
+      case 'articles':
+        return articlesPct
+      case 'plural':
+        return pluralPct
+      default:
+        return 0
+    }
+  }, [mode, cardsPct, singlePct, writingPct, articlesPct, pluralPct])
+
+  const canReset = selectedModePercent > 0
+  const isCompleted = selectedModePercent === 100
+
   const hasWordsForArticlesTraining = (selectedRow?.total_articles_words ?? 0) > 0
   const hasWordsForPluralTraining =  (selectedRow?.total_plural_words ?? 0) > 0
 
@@ -207,8 +254,8 @@ export default function SetupClient({ bookId }: { bookId: string }) {
       return false
     }
 
-    return true
-  }, [bookId, selectedLesson, mode, hasWordsForArticlesTraining, hasWordsForPluralTraining])
+    return !isCompleted
+  }, [bookId, selectedLesson, mode, hasWordsForArticlesTraining, hasWordsForPluralTraining, isCompleted])
 
   const start = () => {
     if (!canStart) return
@@ -480,13 +527,34 @@ export default function SetupClient({ bookId }: { bookId: string }) {
                   </div>
                 </div>
 
+                {canReset && (
+                  <button
+                    type="button"
+                    onClick={resetProgress}
+                    disabled={resetBusy}
+                    className="
+                      mt-12 w-full rounded-2xl
+                      border border-white/15
+                      bg-white/10
+                      px-4 py-3.5
+                      text-base font-semibold text-white/90
+                      transition hover:bg-white/15
+                      disabled:opacity-50
+                      disabled:cursor-default
+                      disabled:hover:bg-white/10
+                    "
+                  >
+                    {resetBusy ? 'Resetting…' : 'Reset progress'}
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={start}
                   disabled={!canStart}
-                  className="mt-12 w-full rounded-2xl bg-white px-4 py-3.5 text-base font-semibold text-slate-950 shadow-lg shadow-white/10 transition hover:-translate-y-[1px] hover:shadow-xl active:translate-y-0 disabled:opacity-60"
+                  className="mt-6 w-full rounded-2xl bg-white px-4 py-3.5 text-base font-semibold text-slate-950 shadow-lg shadow-white/10 transition hover:-translate-y-[1px] hover:shadow-xl active:translate-y-0 disabled:opacity-60"
                 >
-                  Start
+                  {isCompleted ? 'Completed' : 'Start'}
                 </button>
                 </>
               )}
