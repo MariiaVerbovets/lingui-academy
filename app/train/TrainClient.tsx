@@ -68,6 +68,38 @@ function randomPraise() {
 
 const normalizeA = (v: string | null | undefined) => (v ?? '').trim().toLowerCase()
 
+function preloadImage(src: string | null | undefined): Promise<void> {
+  if (!src) return Promise.resolve()
+
+  return new Promise((resolve) => {
+    const image = new Image()
+    let finished = false
+
+    const finish = () => {
+      if (finished) return
+      finished = true
+      resolve()
+    }
+
+    image.onload = async () => {
+      try {
+        await image.decode()
+      } catch {
+        // Картинка уже загружена, даже если decode() не поддерживается
+      }
+
+      finish()
+    }
+
+    image.onerror = finish
+    image.src = src
+
+    if (image.complete) {
+      image.decode().catch(() => undefined).finally(finish)
+    }
+  })
+}
+
 export default function TrainClient() {
   const router = useRouter()
   const sp = useSearchParams()
@@ -122,6 +154,7 @@ export default function TrainClient() {
 
   // shared timer
   const timerRef = useRef<number | null>(null)
+  const changingWordRef = useRef(false)
 
   const current = words[index] ?? null
   const total = words.length
@@ -173,6 +206,7 @@ export default function TrainClient() {
   const scheduleNext = (isCorrect: boolean) => {
     const delay = isCorrect ? 1000 : 2000
     clearTimer()
+
     timerRef.current = window.setTimeout(() => {
       goNext()
     }, delay)
@@ -313,21 +347,27 @@ export default function TrainClient() {
             ? loadedWords.filter(hasPluralTask)
             : loadedWords
 
+        let loadedPool: PoolRow[] = []
+
+        if (mode === 'single') {
+          loadedPool = await fetchSinglePool(parsedBookId, parsedLesson)
+        }
+
+        const firstWord = normalizedWords[0]
+
+        if(firstWord?.picture) {
+          await preloadImage(firstWord.picture)
+        }
+
         if (cancelled) return
 
         setWords(normalizedWords)
+        setPool(loadedPool)
         setIndex(0)
         setCorrectThisSession(0)
         setIsFlipped(false)
         resetSingleRoundState()
         resetWritingRoundState()
-
-        if (mode === 'single') {
-          const loadedPool = await fetchSinglePool(parsedBookId, parsedLesson)
-          if (!cancelled) setPool(loadedPool)
-        } else {
-          setPool([])
-        }
       } catch (e: any) {
         if (!cancelled) setError(e?.message ?? 'Unknown error')
       } finally {
@@ -343,22 +383,34 @@ export default function TrainClient() {
   }, [bookId, lesson, mode, parsedBookId, parsedLesson, router, requestedLimit])
 
   // ===== NEXT =====
-  const goNext = () => {
-    setIsFlipped(false)
-    resetSingleRoundState()
-    resetWritingRoundState()
+  const goNext = async () => {
+    if (changingWordRef.current) return
 
-    setIndex((i) => {
-      const next = i + 1
-      if (next >= total) {
-        setDone(true)
-        return i
+    const nextIndex = index + 1
+
+    if (nextIndex >= total) {
+      setDone(true)
+      return
+    }
+
+    const nextWord = words[nextIndex]
+    if (!nextWord) return
+
+    changingWordRef.current = true
+
+    try {
+      await preloadImage(nextWord.picture)
+
+      setIsFlipped(false)
+      resetSingleRoundState()
+      resetWritingRoundState()
+      setIndex(nextIndex)
+
+      if (mode === 'writing' || mode === 'plural') {
+        window.setTimeout(() => inputRef.current?.focus(), 50)
       }
-      return next
-    })
-
-    if (mode === 'writing' || mode === 'plural') {
-      window.setTimeout(() => inputRef.current?.focus(), 50)
+    } finally {
+      changingWordRef.current = false
     }
   }
 
@@ -415,6 +467,8 @@ export default function TrainClient() {
   // ===== CARDS handlers =====
   const markRemembered = async () => {
     if (!current) return
+    if (changingWordRef.current) return
+
     try {
       await markWordLearnedCards(current.id)
     } catch (e: any) {
@@ -423,11 +477,11 @@ export default function TrainClient() {
     }
 
     setCorrectThisSession((v) => v + 1)
-    goNext()
+    await goNext()
   }
 
   const markWrongCards = () => {
-    goNext()
+    void goNext()
   }
 
   // ===== SINGLE: answer =====
