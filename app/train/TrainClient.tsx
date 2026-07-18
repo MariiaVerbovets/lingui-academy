@@ -485,25 +485,46 @@ export default function TrainClient() {
   }
 
   // ===== SINGLE: answer =====
-  const answerSingle = async (opt: Option) => {
-    if (!current) return
-    if (needsArticle && !selectedArticle) return
+  useEffect(() => {
+    if (!needsArticle) return
     if (answered) return
+    if (selectedArticle == null) return
+    if (selectedOptionId == null) return
+
+    const option = options.find((o) => o.id === selectedOptionId)
+
+    if (!option) return
+
+    void checkSingleAnswer(option)
+  }, [
+    needsArticle,
+    answered,
+    selectedArticle,
+    selectedOptionId,
+    options,
+  ])
+
+  const checkSingleAnswer = async (opt: Option) => {
+    if (!current) return
 
     setAnswered(true)
-    setSelectedOptionId(opt.id)
 
     const wordCorrect = opt.isCorrect
 
     let articleCorrect = true
+
     if (needsArticle) {
       const correctArticle = normalizeA(getSingleTargetArticle(current))
       const selected = normalizeA(selectedArticle)
+
       articleCorrect = !correctArticle || selected === correctArticle
     }
 
     const isCorrect = wordCorrect && articleCorrect
-    if (isCorrect) setCorrectThisSession((v) => v + 1)
+
+    if (isCorrect) {
+      setCorrectThisSession((v) => v + 1)
+    }
 
     try {
       await applyWordAnswer(current.id, 'single', isCorrect)
@@ -512,6 +533,19 @@ export default function TrainClient() {
     }
 
     scheduleNext(isCorrect)
+  }
+
+  const answerSingle = async (opt: Option) => {
+    if (!current) return
+    if (answered) return
+
+    setSelectedOptionId(opt.id)
+
+    if (needsArticle && !selectedArticle) {
+      return
+    }
+
+    await checkSingleAnswer(opt)
   }
 
   // ===== ARTICLES: answer =====

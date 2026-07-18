@@ -80,13 +80,20 @@ export function SingleMode({
 
           const base = 'w-full rounded-2xl px-4 py-3 text-lg font-semibold transition border'
           const normal = 'bg-white/10 text-white/90 border-white/10 hover:bg-white/15'
+          const selected = 'bg-white text-slate-950 border-white/10 shadow-lg shadow-white/10'
           const correct = 'bg-emerald-500/15 text-emerald-100 border-emerald-400/30'
           const wrong = 'bg-red-500/15 text-red-100 border-red-400/30'
           const disabled = 'opacity-80'
 
           const cls = [
             base,
-            showCorrect ? correct : showWrong ? wrong : normal,
+            showCorrect
+              ? correct
+              : showWrong
+                ? wrong
+                : isSelected
+                  ? selected
+                  : normal,
             answered ? disabled : '',
           ].join(' ')
 
