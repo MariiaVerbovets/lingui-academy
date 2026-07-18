@@ -2,7 +2,8 @@ import type {
   NativeLanguage,
   WordRow,
   TrainMode,
-  WordLike
+  WordLike,
+  PoolRow
 } from '@/lib/types'
 
 const hasLetters = (v: string) => /\p{L}/u.test((v ?? '').trim())
@@ -42,8 +43,61 @@ export function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
-export function pickRandom<T>(arr: T[], n: number): T[] {
-  return shuffle(arr).slice(0, n)
+export function pickSingleChoiceDistractors(
+  current: WordRow,
+  pool: PoolRow[],
+  count: number
+): PoolRow[] {
+  const candidates = pool.filter(
+    (word) => word.id !== current.id && hasSingleTargetWord(word)
+  )
+
+  const currentWord = getSingleTargetWord(current)
+    .trim()
+    .toLocaleLowerCase()
+
+  const currentFirstLetter = currentWord.charAt(0)
+
+  const sameTopic = shuffle(
+    candidates.filter(
+      (word) =>
+        current.topic_id != null &&
+        word.topic_id === current.topic_id
+    )
+  )
+
+  const sameTopicIds = new Set(sameTopic.map((word) => word.id))
+
+  const sameFirstLetter = shuffle(
+    candidates.filter((word) => {
+      if (sameTopicIds.has(word.id)) return false
+      if (!currentFirstLetter) return false
+
+      const targetWord = getSingleTargetWord(word)
+        .trim()
+        .toLocaleLowerCase()
+
+      return targetWord.startsWith(currentFirstLetter)
+    })
+  )
+
+  const sameFirstLetterIds = new Set(
+    sameFirstLetter.map((word) => word.id)
+  )
+
+  const remaining = shuffle(
+    candidates.filter(
+      (word) =>
+        !sameTopicIds.has(word.id) &&
+        !sameFirstLetterIds.has(word.id)
+    )
+  )
+
+  return [
+    ...sameTopic,
+    ...sameFirstLetter,
+    ...remaining,
+  ].slice(0, count)
 }
 
 export function normalizeAnswer(s: string) {

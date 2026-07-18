@@ -13,7 +13,7 @@ import type {
 import { PRAISE_LINES } from '@/lib/constants'
 import {
   shuffle,
-  pickRandom,
+  pickSingleChoiceDistractors,
   normalizeAnswer,
   formatExpectedWriting,
   getTranslationByNativeLang,
@@ -139,14 +139,21 @@ export default function TrainClient() {
     if (!pool.length) return []
     if (!hasSingleTargetWord(current)) return []
 
-    const distractorPool = pool.filter((x) => x.id !== current.id && hasSingleTargetWord(x))
-    const distractors = pickRandom(distractorPool, 3)
+    const distractors = pickSingleChoiceDistractors(
+      current,
+      pool,
+      3
+    )
 
     return shuffle([
-      { id: current.id, label: getSingleTargetWord(current), isCorrect: true },
-      ...distractors.map((d) => ({
-        id: d.id,
-        label: getSingleTargetWord(d),
+      {
+        id: current.id,
+        label: getSingleTargetWord(current),
+        isCorrect: true,
+      },
+      ...distractors.map((word) => ({
+        id: word.id,
+        label: getSingleTargetWord(word),
         isCorrect: false,
       })),
     ])

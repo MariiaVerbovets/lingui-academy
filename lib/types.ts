@@ -12,9 +12,16 @@ export type WordRow = {
   translation_en: string | null
   picture: string | null
   transcription: string | null
+  topic_id: number | null
 }
 
-export type PoolRow = { id: number; word_singular: string; article_singular: string | null; word_plural: string | null }
+export type PoolRow = {
+  id: number;
+  word_singular: string;
+  article_singular: string | null;
+  word_plural: string | null;
+  topic_id: number | null
+}
 
 export type Option = {
   id: number
