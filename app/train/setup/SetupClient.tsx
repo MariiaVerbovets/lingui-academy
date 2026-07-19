@@ -6,8 +6,10 @@ import { supabase } from '@/lib/supabaseClient'
 import Select from '../../components/Select'
 import { FlagCircle } from '../../languages/page'
 import AdminIcon from '@/app/components/AdminIcon'
+import ConfirmModal from '@/app/components/ConfirmModal'
 import SettingsBlock from '../../components/SettingsBlock'
 import { resetProgressForLesson } from '@/lib/trainApi'
+import { getModeTitle } from '@/lib/utils'
 
 type TrainMode = 'cards' | 'single' | 'writing' | 'articles' | 'plural' | 'match'
 
@@ -61,7 +63,9 @@ export default function SetupClient({ bookId }: { bookId: string }) {
   const [rows, setRows] = useState<RawLessonRow[]>([])
   const [selectedLesson, setSelectedLesson] = useState<number | null>(null)
   const [mode, setMode] = useState<TrainMode>('cards')
+  const modeTitle = getModeTitle(mode)
   const [error, setError] = useState<string | null>(null)
+  const [showResetModal, setShowResetModal] = useState(false)
 
   // sync with URL if user lands with different query params without full remount
   useEffect(() => {
@@ -530,7 +534,7 @@ export default function SetupClient({ bookId }: { bookId: string }) {
                 {canReset && (
                   <button
                     type="button"
-                    onClick={resetProgress}
+                    onClick={() => setShowResetModal(true)}
                     disabled={resetBusy}
                     className="
                       mt-12 w-full rounded-2xl
@@ -566,6 +570,25 @@ export default function SetupClient({ bookId }: { bookId: string }) {
           <p className="text-center text-xs text-white/35">Lingui Academy</p>
         </footer>
       </div>
+      <ConfirmModal
+        open={showResetModal}
+        title="Reset your progress?"
+        description={
+          <>
+            This will reset your progress for{' '}
+            <strong>Lesson {selectedLesson} ({modeTitle})</strong>.
+            {' '}This action can't be undone.
+          </>
+        }
+        confirmText="Reset progress"
+        cancelText="Cancel"
+        loading={resetBusy}
+        onCancel={() => setShowResetModal(false)}
+        onConfirm={async () => {
+          await resetProgress()
+          setShowResetModal(false)
+        }}
+      />
     </main>
   )
 }

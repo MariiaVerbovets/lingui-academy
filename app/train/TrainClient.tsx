@@ -48,6 +48,7 @@ import { CardsMode } from '@/app/components/train/modes/CardsMode'
 import { SingleMode } from '@/app/components/train/modes/SingleMode'
 import { WritingMode } from '@/app/components/train/modes/WritingMode'
 import { ArticlesMode } from '@/app/components/train/modes/ArticlesMode'
+import ConfirmModal from '@/app/components/ConfirmModal'
 
 function parseTrainMode(value: string | null): TrainMode {
   if (value === 'cards' || value === 'single' || value === 'writing' || value === 'articles' || value === 'plural' || value === 'match') {
@@ -138,6 +139,7 @@ export default function TrainClient() {
 
   // reset button state
   const [resetBusy, setResetBusy] = useState(false)
+  const [showResetModal, setShowResetModal] = useState(false)
   const [resetError, setResetError] = useState<string | null>(null)
 
   // ===== SINGLE / ARTICLES shared answer state =====
@@ -598,24 +600,25 @@ const submitTypedAnswer = async () => {
   scheduleNext(isCorrect)
 }
 
-  // ===== RENDER =====
-  if (loading || nativeLangLoading) {
-    return <TrainLoadingState />
-  }
+// ===== RENDER =====
+if (loading || nativeLangLoading) {
+  return <TrainLoadingState />
+}
 
-  if (!error && total === 0) {
-    return (
-      <TrainEmptyState
-        modeTitle={modeTitle}
-        lesson={lesson}
-        parsedLesson={parsedLesson}
-        onBackToSetup={finishTraining}
-      />
-    )
-  }
+if (!error && total === 0) {
+  return (
+    <TrainEmptyState
+      modeTitle={modeTitle}
+      lesson={lesson}
+      parsedLesson={parsedLesson}
+      onBackToSetup={finishTraining}
+    />
+  )
+}
 
-  if (isDone) {
-    return (
+return (
+  <>
+    {isDone ? (
       <TrainDoneState
         modeTitle={modeTitle}
         lessonCleared={lessonCleared}
@@ -626,105 +629,140 @@ const submitTypedAnswer = async () => {
         resetError={resetError}
         resetBusy={resetBusy}
         onFinish={finishTraining}
-        onResetProgress={resetProgress}
+        onResetProgress={() => setShowResetModal(true)}
       />
-    )
-  }
+    ) : (
+      <main className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 px-4">
+        <TrainBackground />
 
-  return (
-    <main className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 px-4">
-      <TrainBackground />
-      <div className="relative min-h-screen flex flex-col">
-        <button
-          type="button"
-          onClick={goBack}
-          className={[
-            'absolute left-3 top-5 sm:left-6 sm:top-6 z-30',
-            'inline-flex items-center gap-2',
-            'text-md text-white/70 hover:text-white',
-            'transition',
-            'focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 rounded-lg px-1',
-          ].join(' ')}
-          aria-label="Go back"
-        >
-          <span className="text-base" aria-hidden="true">←</span>
-          <span className="hidden sm:inline">Back</span>
-        </button>
-        <header className="pt-10 pb-6 text-center">
-          <h1 className="text-2xl sm:text-3xl font-semibold text-white tracking-tight">{modeTitle}</h1>
-          <p className="mt-1 text-white/60">{title}</p>
-        </header>
-        <section className="flex-1 flex items-start justify-center pb-10">
-          <div className="w-full max-w-md rounded-3xl border border-white/10 bg-white/5 p-6 sm:p-8 backdrop-blur-xl shadow-[0_20px_60px_-20px_rgba(0,0,0,0.6)]">
-            {error && (
-              <div className="mb-5 inline-flex rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-md text-red-200">
-                {error}
-              </div>
-            )}
+        <div className="relative min-h-screen flex flex-col">
+          <button
+            type="button"
+            onClick={goBack}
+            className={[
+              'absolute left-3 top-5 sm:left-6 sm:top-6 z-30',
+              'inline-flex items-center gap-2',
+              'text-md text-white/70 hover:text-white',
+              'transition',
+              'focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 rounded-lg px-1',
+            ].join(' ')}
+            aria-label="Go back"
+          >
+            <span className="text-base" aria-hidden="true">
+              ←
+            </span>
+            <span className="hidden sm:inline">Back</span>
+          </button>
 
-            {current && (
-              <>
-                <div className="mb-4 text-center text-md text-white/50">
-                  {index + 1} / {total}
+          <header className="pt-10 pb-6 text-center">
+            <h1 className="text-2xl sm:text-3xl font-semibold text-white tracking-tight">
+              {modeTitle}
+            </h1>
+
+            <p className="mt-1 text-white/60">{title}</p>
+          </header>
+
+          <section className="flex-1 flex items-start justify-center pb-10">
+            <div className="w-full max-w-md rounded-3xl border border-white/10 bg-white/5 p-6 sm:p-8 backdrop-blur-xl shadow-[0_20px_60px_-20px_rgba(0,0,0,0.6)]">
+              {error && (
+                <div className="mb-5 inline-flex rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-md text-red-200">
+                  {error}
                 </div>
+              )}
 
-                {mode === 'cards' && (
-                  <CardsMode
-                    current={current}
-                    isFlipped={isFlipped}
-                    translation={translation}
-                    onFlip={() => setIsFlipped((v) => !v)}
-                    onWrong={markWrongCards}
-                    onRemembered={markRemembered}
-                  />
-                )}
+              {current && (
+                <>
+                  <div className="mb-4 text-center text-md text-white/50">
+                    {index + 1} / {total}
+                  </div>
 
-                {mode === 'single' && (
-                  <SingleMode
-                    current={current}
-                    promptText={promptText}
-                    needsArticle={needsArticle}
-                    selectedArticle={selectedArticle}
-                    answered={answered}
-                    selectedOptionId={selectedOptionId}
-                    options={options}
-                    onSelectArticle={(a) =>
-                      setSelectedArticle(a ? (a.trim().toLowerCase() as Article) : null)
-                    }
-                    onAnswer={answerSingle}
-                    lang={lang}
-                  />
-                )}
+                  {mode === 'cards' && (
+                    <CardsMode
+                      current={current}
+                      isFlipped={isFlipped}
+                      translation={translation}
+                      onFlip={() => setIsFlipped((v) => !v)}
+                      onWrong={markWrongCards}
+                      onRemembered={markRemembered}
+                    />
+                  )}
 
-                {mode === 'articles' && (
-                  <ArticlesMode
-                    current={current}
-                    answered={answered}
-                    selectedArticle={selectedArticle}
-                    onAnswer={answerArticles}
-                    lang={lang}
-                  />
-                )}
+                  {mode === 'single' && (
+                    <SingleMode
+                      current={current}
+                      promptText={promptText}
+                      needsArticle={needsArticle}
+                      selectedArticle={selectedArticle}
+                      answered={answered}
+                      selectedOptionId={selectedOptionId}
+                      options={options}
+                      onSelectArticle={(a) =>
+                        setSelectedArticle(
+                          a ? (a.trim().toLowerCase() as Article) : null
+                        )
+                      }
+                      onAnswer={answerSingle}
+                      lang={lang}
+                    />
+                  )}
 
-                {(mode === 'writing' || mode === 'plural') && (
-                  <WritingMode
-                    mode={mode}
-                    current={current}
-                    promptText={mode === 'plural' ? formatPluralPrompt(current, promptText) : promptText}
-                    inputRef={inputRef}
-                    writingValue={writingValue}
-                    writingChecked={writingChecked}
-                    writingWasCorrect={writingWasCorrect}
-                    onChange={setWritingValue}
-                    onSubmit={submitTypedAnswer}
-                  />
-                )}
-              </>
-            )}
-          </div>
-        </section>
-        <footer className="pb-6 text-center text-xs text-white/35">Lingui Academy</footer>
-      </div>
-    </main>
-  )
-}
+                  {mode === 'articles' && (
+                    <ArticlesMode
+                      current={current}
+                      answered={answered}
+                      selectedArticle={selectedArticle}
+                      onAnswer={answerArticles}
+                      lang={lang}
+                    />
+                  )}
+
+                  {(mode === 'writing' || mode === 'plural') && (
+                    <WritingMode
+                      mode={mode}
+                      current={current}
+                      promptText={
+                        mode === 'plural'
+                          ? formatPluralPrompt(current, promptText)
+                          : promptText
+                      }
+                      inputRef={inputRef}
+                      writingValue={writingValue}
+                      writingChecked={writingChecked}
+                      writingWasCorrect={writingWasCorrect}
+                      onChange={setWritingValue}
+                      onSubmit={submitTypedAnswer}
+                    />
+                  )}
+                </>
+              )}
+            </div>
+          </section>
+
+          <footer className="pb-6 text-center text-xs text-white/35">
+            Lingui Academy
+          </footer>
+        </div>
+      </main>
+    )}
+
+    <ConfirmModal
+      open={showResetModal}
+      title="Reset your progress?"
+      description={
+        <>
+          This will reset your progress for{' '}
+          <strong>Lesson {lesson} ({modeTitle})</strong>.
+          {' '}This action can't be undone.
+        </>
+      }
+      confirmText="Reset progress"
+      cancelText="Cancel"
+      loading={resetBusy}
+      onCancel={() => setShowResetModal(false)}
+      onConfirm={async () => {
+        setShowResetModal(false)
+        await resetProgress()
+      }}
+    />
+  </>
+)}
