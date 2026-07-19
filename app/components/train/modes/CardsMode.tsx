@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import type { WordRow } from '@/lib/types'
 import { formatCardsWord } from '@/lib/utils'
 import { WordImage } from '@/app/components/train/WordImage'
@@ -23,6 +24,28 @@ export function CardsMode({
 }: CardsModeProps) {
   const wordText = formatCardsWord(current)
   const hasPicture = !!current.picture?.trim()
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.repeat) return
+
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault()
+        onWrong()
+      }
+
+      if (event.key === 'ArrowRight') {
+        event.preventDefault()
+        onRemembered()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [onWrong, onRemembered])
 
   return (
     <>
@@ -96,7 +119,7 @@ export function CardsMode({
             'focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400/20',
           ].join(' ')}
           aria-label="Repeat again"
-          title="Repeat again"
+          title="Repeat again ←"
         >
           ✕
         </button>
@@ -112,7 +135,7 @@ export function CardsMode({
             'focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/20',
           ].join(' ')}
           aria-label="Mark remembered"
-          title="Mark remembered"
+          title="Mark remembered →"
         >
           ✓
         </button>
